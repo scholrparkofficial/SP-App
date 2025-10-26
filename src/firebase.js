@@ -1,19 +1,21 @@
 // src/firebase.js
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
+import { getFirestore, collection, query, orderBy } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBDirsC6y7LKBc2TR9CzDJ-_9XTo8ul7WA",
-  authDomain: "scholarspark-5b8f6.firebaseapp.com",
-  projectId: "scholarspark-5b8f6",
-  storageBucket: "scholarspark-5b8f6.firebasestorage.app",
-  messagingSenderId: "873625117405",
-  appId: "1:873625117405:web:5a7a76cb92e07a9da6f134",
-  measurementId: "G-HNLX93GBMR"
+  apiKey: "AIzaSyDYKhtMkqa9HSEk193JNC5Nuv2Q4rRkbG4",
+  authDomain: "scholrpark.firebaseapp.com",
+  projectId: "scholrpark",
+  storageBucket: "scholrpark.firebasestorage.app",
+  messagingSenderId: "686876393628",
+  appId: "1:686876393628:web:0ee7dee1cf0d62debb2d59",
+  measurementId: "G-DG7HRGDLB6"
 };
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
+export const db = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();
 
 export const loginWithGoogle = async () => {
@@ -49,4 +51,226 @@ export const logoutUser = async () => {
   } catch (error) {
     console.error(error);
   }
+};
+
+// Firestore helpers for messaging
+export const createUserDocument = async (user) => {
+  const { doc, setDoc } = await import("firebase/firestore");
+  const userRef = doc(db, "users", user.uid);
+  await setDoc(userRef, {
+    uid: user.uid,
+    email: user.email,
+    displayName: user.displayName || user.email?.split("@")[0] || "User",
+    photoURL: user.photoURL || "",
+    createdAt: new Date(),
+  });
+  return userRef;
+};
+
+export const searchUsers = async (searchTerm) => {
+  const { collection, getDocs } = await import("firebase/firestore");
+  const usersRef = collection(db, "users");
+  const snapshot = await getDocs(usersRef);
+  
+  // Client-side filtering to avoid index requirement
+  const searchLower = searchTerm.toLowerCase();
+  const results = snapshot.docs
+    .map(doc => ({ id: doc.id, ...doc.data() }))
+    .filter(user => 
+      user.email?.toLowerCase().includes(searchLower) ||
+      user.displayName?.toLowerCase().includes(searchLower)
+    )
+    .slice(0, 10);
+  
+  return results;
+};
+
+export const getUserConversations = async (userId) => {
+  const { collection, query, where, getDocs } = await import("firebase/firestore");
+  const conversationsRef = collection(db, "conversations");
+  // First try with ordering
+  try {
+    const { orderBy: orderByFn } = await import("firebase/firestore");
+    const q = query(conversationsRef, where("participants", "array-contains", userId), orderByFn("lastMessageAt", "desc"));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    // If index is not ready, just get conversations without ordering
+    const q = query(conversationsRef, where("participants", "array-contains", userId));
+    const snapshot = await getDocs(q);
+    const conversations = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    // Sort client-side
+    return conversations.sort((a, b) => {
+      const aTime = a.lastMessageAt?.toMillis?.() || 0;
+      const bTime = b.lastMessageAt?.toMillis?.() || 0;
+      return bTime - aTime;
+    });
+  }
+};
+
+export const sendMessage = async (conversationId, senderId, text) => {
+  const { collection, doc, addDoc, updateDoc, Timestamp } = await import("firebase/firestore");
+  const messagesRef = collection(db, "conversations", conversationId, "messages");
+  await addDoc(messagesRef, {
+    senderId,
+    text,
+    timestamp: Timestamp.now(),
+    read: false,
+  });
+  
+  // Update conversation last message
+  const conversationRef = doc(db, "conversations", conversationId);
+  await updateDoc(conversationRef, {
+    lastMessage: text,
+    lastMessageAt: Timestamp.now(),
+    lastMessageBy: senderId,
+  });
+};
+
+export const getConversationMessages = (conversationId) => {
+  const messagesRef = collection(db, "conversations", conversationId, "messages");
+  const q = query(messagesRef, orderBy("timestamp", "asc"));
+  return q;
+};
+
+export const createConversation = async (participantIds) => {
+  const { collection, addDoc, doc, setDoc } = await import("firebase/firestore");
+  const conversationRef = doc(collection(db, "conversations"));
+  await setDoc(conversationRef, {
+    participants: participantIds,
+    createdAt: new Date(),
+    lastMessage: "",
+    lastMessageAt: new Date(),
+    lastMessageBy: null,
+  });
+  return conversationRef.id;
+};
+
+export const getOrCreateConversation = async (currentUserId, otherUserId) => {
+  const { collection, query, where, getDocs, doc, setDoc } = await import("firebase/firestore");
+  
+  // Check if conversation already exists
+  const conversationsRef = collection(db, "conversations");
+  const q = query(conversationsRef, where("participants", "array-contains", currentUserId));
+  const snapshot = await getDocs(q);
+  
+  const existingConversation = snapshot.docs.find(conv => {
+    const data = conv.data();
+    return data.participants.includes(otherUserId);
+  });
+  
+  if (existingConversation) {
+    return existingConversation.id;
+  }
+  
+  // Create new conversation
+  const newConversationRef = doc(conversationsRef);
+  await setDoc(newConversationRef, {
+    participants: [currentUserId, otherUserId],
+    createdAt: new Date(),
+    lastMessage: "",
+    lastMessageAt: new Date(),
+    lastMessageBy: null,
+  });
+  
+  return newConversationRef.id;
+};
+
+export const getUserDetails = async (userId) => {
+  const { doc, getDoc } = await import("firebase/firestore");
+  const userRef = doc(db, "users", userId);
+  const userSnap = await getDoc(userRef);
+  if (userSnap.exists()) {
+    return { id: userSnap.id, ...userSnap.data() };
+  }
+  return null;
+};
+
+// Group chat functions
+export const createGroup = async (groupName, createdBy, participantIds) => {
+  const { collection, doc, setDoc } = await import("firebase/firestore");
+  const groupsRef = collection(db, "groups");
+  const newGroupRef = doc(groupsRef);
+  
+  await setDoc(newGroupRef, {
+    name: groupName,
+    createdBy,
+    participants: participantIds,
+    createdAt: new Date(),
+    type: "group",
+    lastMessage: "",
+    lastMessageAt: new Date(),
+    lastMessageBy: null,
+  });
+  
+  return newGroupRef.id;
+};
+
+export const getGroupsForUser = async (userId) => {
+  const { collection, query, where, getDocs } = await import("firebase/firestore");
+  const groupsRef = collection(db, "groups");
+  const q = query(groupsRef, where("participants", "array-contains", userId));
+  const snapshot = await getDocs(q);
+  
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+};
+
+export const getGroupDetails = async (groupId) => {
+  const { doc, getDoc } = await import("firebase/firestore");
+  const groupRef = doc(db, "groups", groupId);
+  const groupSnap = await getDoc(groupRef);
+  
+  if (groupSnap.exists()) {
+    return { id: groupSnap.id, ...groupSnap.data() };
+  }
+  return null;
+};
+
+export const getGroupMessages = (groupId) => {
+  const messagesRef = collection(db, "groups", groupId, "messages");
+  const q = query(messagesRef, orderBy("timestamp", "asc"));
+  return q;
+};
+
+export const sendGroupMessage = async (groupId, senderId, text) => {
+  const { collection, doc, addDoc, updateDoc, Timestamp } = await import("firebase/firestore");
+  const messagesRef = collection(db, "groups", groupId, "messages");
+  
+  await addDoc(messagesRef, {
+    senderId,
+    text,
+    timestamp: Timestamp.now(),
+    read: [],
+  });
+  
+  // Update group last message
+  const groupRef = doc(db, "groups", groupId);
+  await updateDoc(groupRef, {
+    lastMessage: text,
+    lastMessageAt: Timestamp.now(),
+    lastMessageBy: senderId,
+  });
+};
+
+export const addMemberToGroup = async (groupId, userIds) => {
+  const { doc, updateDoc, arrayUnion } = await import("firebase/firestore");
+  const groupRef = doc(db, "groups", groupId);
+  
+  await updateDoc(groupRef, {
+    participants: arrayUnion(...userIds),
+  });
+};
+
+export const deleteGroup = async (groupId) => {
+  const { doc, collection, getDocs, deleteDoc } = await import("firebase/firestore");
+  
+  // Delete all messages in the group
+  const messagesRef = collection(db, "groups", groupId, "messages");
+  const messagesSnapshot = await getDocs(messagesRef);
+  const deletePromises = messagesSnapshot.docs.map(doc => deleteDoc(doc.ref));
+  await Promise.all(deletePromises);
+  
+  // Delete the group
+  const groupRef = doc(db, "groups", groupId);
+  await deleteDoc(groupRef);
 };

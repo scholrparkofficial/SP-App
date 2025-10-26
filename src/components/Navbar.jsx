@@ -17,7 +17,6 @@ import Messages from "./Messages";
 import NotificationsPanel from "./NotificationsPanel";
 import LoginModal from "./LoginModal";
 import { useAuth } from "../contexts/AuthContext";
-import { loginWithGoogle, logoutUser } from "../firebase";
 
 export default function Navbar() {
   const [isMessagesOpen, setIsMessagesOpen] = useState(false);
@@ -26,7 +25,7 @@ export default function Navbar() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, googleLogin, logout } = useAuth();
 
   React.useEffect(() => {
     // Initialize dark mode from localStorage
@@ -52,7 +51,7 @@ export default function Navbar() {
 
   const handleGoogleLogin = async () => {
     try {
-      await loginWithGoogle();
+      await googleLogin();
       setIsModalOpen(false);
     } catch (error) {
       console.error('Google login error:', error);
@@ -61,7 +60,7 @@ export default function Navbar() {
 
   const handleLogout = async () => {
     try {
-      await logoutUser();
+      await logout();
     } catch (error) {
       console.error('Logout error:', error);
     }
@@ -71,25 +70,25 @@ export default function Navbar() {
   return (
     <>
       {/* Navbar */}
-      <div className="flex items-center justify-between bg-green-50 dark:bg-gray-900 px-6 h-16 shadow-md">
+      <div className="flex items-center justify-between bg-green-50 dark:bg-gray-900 px-3 md:px-6 h-14 md:h-16 shadow-md">
         {/* Left: Logo + Name */}
         <div className="flex items-center gap-2">
           <img
             src="/logo.jpeg"
             alt="Logo"
-            className="w-120 h-12 rounded-xl object-cover"
+            className="w-16 h-10 md:w-120 md:h-12 rounded-xl object-cover"
           />
-          <span className="font-bold text-xl text-gray-800 dark:text-gray-200"></span>
+          <span className="font-bold text-lg md:text-xl text-gray-800 dark:text-gray-200"></span>
         </div>
 
-        {/* Center: Navigation */}
-        <div className="flex items-center gap-10">
+        {/* Center: Navigation - Compact on mobile, full on desktop */}
+        <div className="flex items-center gap-3 md:gap-10">
           <Link
             to="/"
             className="flex flex-col items-center text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
           >
             <Home size={20} />
-            <span className="text-sm">Home</span>
+            <span className="text-xs md:text-sm">Home</span>
           </Link>
 
           <Link
@@ -97,7 +96,8 @@ export default function Navbar() {
             className="flex flex-col items-center text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
           >
             <BookOpen size={20} />
-            <span className="text-sm">Private Batches</span>
+            <span className="text-xs md:text-sm hidden md:inline">Private Batches</span>
+            <span className="text-xs md:hidden">Batches</span>
           </Link>
 
           <Link
@@ -105,7 +105,7 @@ export default function Navbar() {
             className="flex flex-col items-center text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
           >
             <FileText size={20} />
-            <span className="text-sm">Notes</span>
+            <span className="text-xs md:text-sm">Notes</span>
           </Link>
 
           <button
@@ -117,7 +117,8 @@ export default function Navbar() {
             className="flex flex-col items-center text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
           >
             <MessageCircle size={20} />
-            <span className="text-sm">Messages</span>
+            <span className="text-xs md:text-sm hidden md:inline">Messages</span>
+            <span className="text-xs md:hidden">Chat</span>
           </button>
 
           <button
@@ -129,13 +130,15 @@ export default function Navbar() {
             className="flex flex-col items-center text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
           >
             <Bell size={20} />
-            <span className="text-sm">Notifications</span>
+            <span className="text-xs md:text-sm hidden md:inline">Notifications</span>
+            <span className="text-xs md:hidden">Alerts</span>
           </button>
         </div>
 
         {/* Right: Search Bar + Profile */}
-        <div className="flex items-center gap-4">
-          <div className="flex items-center bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 w-64">
+        <div className="flex items-center gap-2 md:gap-4">
+          {/* Search - Hidden on very small screens, shown on larger mobile */}
+          <div className="hidden sm:flex items-center bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 w-40 md:w-64">
             <input
               type="search"
               placeholder="Search..."
@@ -163,13 +166,15 @@ export default function Navbar() {
               setIsMessagesOpen(false);
               setIsNotificationsOpen(false);
             }}
+            className="focus:outline-none"
           >
             <img
               src="/avatar.png"
               alt="Profile"
-              className="w-8 h-8 rounded-full border border-gray-300 dark:border-gray-600"
+              className="w-8 h-8 md:w-10 md:h-10 rounded-full border border-gray-300 dark:border-gray-600"
             />
           </button>
+          
         </div>
       </div>
 
@@ -187,7 +192,7 @@ export default function Navbar() {
 
 {/* Slide-in Profile Panel */}
 {isProfileOpen && (
-  <div className="fixed top-0 right-0 w-72 h-full bg-white dark:bg-gray-800 shadow-lg z-50 flex flex-col">
+  <div className="fixed top-0 right-0 w-full md:w-72 h-full bg-white dark:bg-gray-800 shadow-lg z-50 flex flex-col">
     <div className="flex justify-between items-center px-4 py-3 border-b border-gray-200 dark:border-gray-600">
       <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Profile</h2>
       <button onClick={() => setIsProfileOpen(false)}>
@@ -195,7 +200,7 @@ export default function Navbar() {
       </button>
     </div>
 
-    <div className="p-4 flex flex-col gap-4">
+    <div className="p-4 flex flex-col gap-4 overflow-y-auto">
       {user ? (
         <>
           <div className="flex items-center gap-3">
@@ -251,16 +256,6 @@ export default function Navbar() {
         </>
       )}
 
-      {/* Account Settings Button - always visible */}
-      <button
-        onClick={() => {
-          setIsProfileOpen(false);
-          navigate("/account");
-        }}
-        className="flex items-center gap-2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700"
-      >
-        <Settings size={18} className="text-gray-700 dark:text-gray-300" /> <span className="text-gray-700 dark:text-gray-300">Account Settings</span>
-      </button>
       {/* Divider */}
       <hr className="border-gray-200 dark:border-gray-600" />
 

@@ -1,18 +1,37 @@
 // src/pages/AccountSettings.jsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function AccountSettings({ navbarProfileUpdater }) {
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [watchTime, setWatchTime] = useState(0);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   const [profileData, setProfileData] = useState({
-    username: "John Doe",
-    email: "johndoe@email.com",
+    username: "",
+    email: "",
     avatar: "/avatar.png",
   });
+
+  useEffect(() => {
+    if (user) {
+      setProfileData({
+        username: user.displayName || user.email?.split("@")[0] || "User",
+        email: user.email || "",
+        avatar: user.photoURL || "/avatar.png",
+      });
+    }
+  }, [user]);
+
+  // Redirect to home if not logged in
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate("/");
+    }
+  }, [user, loading, navigate]);
 
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
@@ -27,25 +46,68 @@ export default function AccountSettings({ navbarProfileUpdater }) {
   }, []);
 
   // Handle profile updates
-  const handleProfileSave = () => {
-    console.log("Profile updated:", profileData);
-    setIsEditingProfile(false);
+  const handleProfileSave = async () => {
+    try {
+      // Update user profile in Firestore
+      const { doc, setDoc } = await import("firebase/firestore");
+      const { db } = await import("../firebase");
+      const userRef = doc(db, "users", user.uid);
+      await setDoc(userRef, {
+        uid: user.uid,
+        email: profileData.email,
+        displayName: profileData.username,
+        photoURL: profileData.avatar,
+        createdAt: new Date(),
+      }, { merge: true });
 
-    // Update the Navbar profile picture globally if passed as prop
-    if (navbarProfileUpdater) {
-      navbarProfileUpdater(profileData.avatar, profileData.username);
+      // Also update Firebase Auth profile
+      const { updateProfile } = await import("firebase/auth");
+      const { auth } = await import("../firebase");
+      await updateProfile(auth.currentUser, {
+        displayName: profileData.username,
+        photoURL: profileData.avatar,
+      });
+
+      console.log("Profile updated:", profileData);
+      setIsEditingProfile(false);
+
+      // Update the Navbar profile picture globally if passed as prop
+      if (navbarProfileUpdater) {
+        navbarProfileUpdater(profileData.avatar, profileData.username);
+      }
+      
+      alert("Profile updated successfully!");
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      alert("Failed to update profile. Please try again.");
     }
   };
 
-  const handlePasswordChange = () => {
+  const handlePasswordChange = async () => {
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       alert("New password and confirm password do not match!");
       return;
     }
-    console.log("Password changed:", passwordData);
-    setIsChangingPassword(false);
-    setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
-    alert("Password updated successfully!");
+
+    try {
+      const { updatePassword } = await import("firebase/auth");
+      const { auth } = await import("../firebase");
+      
+      await updatePassword(auth.currentUser, passwordData.newPassword);
+      
+      console.log("Password changed successfully");
+      setIsChangingPassword(false);
+      setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      alert("Password updated successfully!");
+    } catch (error) {
+      console.error("Error changing password:", error);
+      
+      if (error.code === "auth/requires-recent-login") {
+        alert("For security, please log out and log back in before changing your password.");
+      } else {
+        alert("Failed to update password: " + error.message);
+      }
+    }
   };
 
   const handleAvatarChange = (e) => {
@@ -58,6 +120,18 @@ export default function AccountSettings({ navbarProfileUpdater }) {
       reader.readAsDataURL(file);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex justify-center items-center">
+        <div className="text-lg text-gray-600 dark:text-gray-400">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null; // Will redirect to home
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex justify-center items-start p-6">

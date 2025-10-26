@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { signupWithEmail, loginWithEmail } from '../firebase';
 import { X } from 'lucide-react';
 
 export default function LoginModal({ isOpen, onClose, onGoogleLogin }) {

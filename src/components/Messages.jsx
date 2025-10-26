@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Search, Plus, X, Send, Users, Trash2 } from "lucide-react";
+import { Search, Plus, X, Send, Users, Trash2, HelpCircle } from "lucide-react";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { useAuth } from "../contexts/AuthContext";
 import CreateGroupModal from "./CreateGroupModal";
@@ -44,6 +44,7 @@ export default function Messages({ isOpen, onClose }) {
   const [chatType, setChatType] = useState(null); // "private" or "group"
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
   const [messageOptionsId, setMessageOptionsId] = useState(null); // Track which message's options are shown
+  const [showHelp, setShowHelp] = useState(false);
   const messagesEndRef = useRef(null);
 
   // AI chat messages
@@ -323,9 +324,28 @@ export default function Messages({ isOpen, onClose }) {
             {aiActive ? "AI Chat" : selectedChat ? selectedChat.otherUser?.displayName || "Chat" : "Messages"}
           </h2>
         </div>
-        <button onClick={onClose} className="text-red-500 text-xl font-bold ml-2">
-          <X size={24} />
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Desktop / tablet textual Help button */}
+          <button
+            onClick={() => setShowHelp(true)}
+            className="hidden md:inline-flex px-3 py-1 rounded text-sm border dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 hover:bg-gray-100"
+            title="Help & Support"
+          >
+            Help
+          </button>
+          {/* Mobile icon Help button */}
+          <button
+            onClick={() => setShowHelp(true)}
+            className="md:hidden p-2 rounded text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+            title="Help & Support"
+            aria-label="Help & Support"
+          >
+            <HelpCircle size={18} />
+          </button>
+          <button onClick={onClose} className="text-red-500 text-xl font-bold ml-2">
+            <X size={24} />
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-1 overflow-hidden">
@@ -815,6 +835,80 @@ export default function Messages({ isOpen, onClose }) {
               >
                 Delete
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Help & Support Modal */}
+      {showHelp && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full p-6 overflow-y-auto max-h-[80vh]">
+            <div className="flex justify-between items-start mb-4">
+              <h3 className="text-xl font-extrabold dark:text-white">Messages — Help & Support</h3>
+              <button
+                onClick={() => setShowHelp(false)}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-300 text-lg font-semibold"
+                aria-label="Close help"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="text-sm text-gray-700 dark:text-gray-200">
+              <p className="mb-4">Quick guide to using <strong>Messages</strong> in the app.</p>
+
+              <section className="mb-4">
+                <h4 className="text-sm font-semibold dark:text-white mb-2">Start a conversation</h4>
+                <ol className="list-decimal list-inside ml-4 space-y-1 leading-relaxed text-gray-600 dark:text-gray-300">
+                  <li>Use the <strong>search</strong> field to find a user by name or email.</li>
+                  <li>Click a search result to start a private chat.</li>
+                </ol>
+              </section>
+
+              <section className="mb-4">
+                <h4 className="text-sm font-semibold dark:text-white mb-2">Create a group</h4>
+                <ol className="list-decimal list-inside ml-4 space-y-1 leading-relaxed text-gray-600 dark:text-gray-300">
+                  <li>Click <strong>New Group</strong> and follow the prompts to create a group.</li>
+                  <li>After creation, the group appears in the <strong>Groups</strong> list.</li>
+                </ol>
+              </section>
+
+              <section className="mb-4">
+                <h4 className="text-sm font-semibold dark:text-white mb-2">AI Chat</h4>
+                <p className="leading-relaxed text-gray-600 dark:text-gray-300">Click <strong>AI Chat</strong> to start a conversation with the built-in assistant. Type messages and the assistant will reply in the chat window.</p>
+              </section>
+
+              <section className="mb-4">
+                <h4 className="text-sm font-semibold dark:text-white mb-2">Send messages</h4>
+                <ol className="list-decimal list-inside ml-4 space-y-1 leading-relaxed text-gray-600 dark:text-gray-300">
+                  <li>Type in the input at the bottom and press <strong>Enter</strong> or click the send button.</li>
+                  <li>Messages go to the selected chat: group or private.</li>
+                </ol>
+              </section>
+
+              <section className="mb-4">
+                <h4 className="text-sm font-semibold dark:text-white mb-2">Delete messages</h4>
+                <p className="leading-relaxed text-gray-600 dark:text-gray-300">If it's your message, click it to open options and choose <em>Delete for everyone</em> or <em>Delete for me</em>. Deleted-for-everyone messages show a placeholder.</p>
+              </section>
+
+              <section className="mb-4">
+                <h4 className="text-sm font-semibold dark:text-white mb-2">Other notes</h4>
+                <ul className="list-disc list-inside ml-4 space-y-1 text-gray-600 dark:text-gray-300 leading-relaxed">
+                  <li>Unread/read status is shown by ticks on your messages.</li>
+                  <li>The sidebar collapses on small screens—use the mobile layout for compact devices.</li>
+                  <li>Search is debounced (500ms) to reduce load while typing.</li>
+                </ul>
+              </section>
+
+              <div className="mt-4 flex justify-end">
+                <button
+                  onClick={() => setShowHelp(false)}
+                  className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>

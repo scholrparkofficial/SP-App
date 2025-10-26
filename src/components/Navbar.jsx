@@ -22,6 +22,7 @@ export default function Navbar() {
   const [isMessagesOpen, setIsMessagesOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const navigate = useNavigate();
@@ -229,6 +230,7 @@ export default function Navbar() {
           </button>
 
           <button
+            onClick={() => setShowHelpModal(true)}
             className="flex items-center gap-2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700"
           >
             <HelpCircle size={18} className="text-gray-700 dark:text-gray-300" /> <span className="text-gray-700 dark:text-gray-300">Help & Support</span>
@@ -278,6 +280,65 @@ export default function Navbar() {
   onClose={() => setIsModalOpen(false)}
   onGoogleLogin={handleGoogleLogin}
 />
+      {/* Profile Help Modal */}
+      {showHelpModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-lg w-full p-6">
+            <div className="flex justify-between items-start mb-4">
+              <h3 className="text-lg font-bold dark:text-white">Help for Messages</h3>
+              <button
+                onClick={() => setShowHelpModal(false)}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-300"
+                aria-label="Close help"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="text-sm text-gray-700 dark:text-gray-200 space-y-3">
+              <p className="leading-relaxed">This section explains how to access the <strong>Messages</strong> feature and add people to conversations.</p>
+
+              <div>
+                <h4 className="font-semibold mb-1 dark:text-white">How to go to Messages</h4>
+                <p className="text-gray-600 dark:text-gray-300">Click the <strong>Messages</strong> icon in the navbar (chat bubble). You can also open Messages from the main menu by tapping <strong>Chat</strong> on mobile.</p>
+              </div>
+
+              <div>
+                <h4 className="font-semibold mb-1 dark:text-white">How to add new people in Messages</h4>
+                <ol className="list-decimal list-inside ml-4 text-gray-600 dark:text-gray-300 space-y-1">
+                  <li>Open <strong>Messages</strong> and use the <strong>Search</strong> field to find people by name or email.</li>
+                  <li>Click a search result to start a private conversation with that person.</li>
+                  <li>To add multiple people, create a <strong>New Group</strong> inside Messages and invite users when prompted.</li>
+                </ol>
+              </div>
+
+              <div>
+                <h4 className="font-semibold mb-1 dark:text-white">Notes</h4>
+                <p className="text-gray-600 dark:text-gray-300">This help content will be updated when new messaging features are added (for example, notes, attachments, or richer collaborators).</p>
+              </div>
+
+              <div className="flex gap-2 justify-end pt-2">
+                <button
+                  onClick={() => {
+                    setIsMessagesOpen(true);
+                    setIsProfileOpen(false);
+                    setShowHelpModal(false);
+                  }}
+                  className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+                >
+                  Open Messages
+                </button>
+                <button
+                  onClick={() => setShowHelpModal(false)}
+                  className="px-4 py-2 border rounded hover:bg-gray-50 dark:hover:bg-gray-700"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

@@ -15,6 +15,9 @@ import {
   getGroupMessages,
   sendGroupMessage,
   deleteGroup,
+  markMessageAsRead,
+  deleteMessageForMe,
+  deleteMessageForEveryone,
   db
 } from "../firebase";
 import { onSnapshot, query, orderBy } from "firebase/firestore";
@@ -40,6 +43,7 @@ export default function Messages({ isOpen, onClose }) {
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [chatType, setChatType] = useState(null); // "private" or "group"
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
+  const [messageOptionsId, setMessageOptionsId] = useState(null); // Track which message's options are shown
   const messagesEndRef = useRef(null);
 
   // AI chat messages
@@ -655,18 +659,76 @@ export default function Messages({ isOpen, onClose }) {
                 {selectedChat &&
                   messages.map((msg) => {
                     const isMe = msg.senderId === user.uid;
+                    // Skip messages that are deleted for the current user
+                    if (msg.deletedFor?.includes(user.uid)) return null;
+
+                    // Mark message as read if it's not from current user
+                    if (!isMe && msg.readBy && !msg.readBy.includes(user.uid)) {
+                      markMessageAsRead(selectedChat.id, msg.id, user.uid);
+                    }
+
                     return (
-                      <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
-                        <div className={`px-4 py-2 rounded-2xl max-w-xs md:max-w-sm shadow text-sm ${
-                          isMe
-                            ? "bg-blue-500 text-white rounded-br-none"
-                            : "bg-gray-300 dark:bg-gray-600 text-black dark:text-white rounded-bl-none"
-                        }`}>
-                          {msg.text}
-                          <div className="text-xs opacity-70 mt-1">
+                      <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"} group relative`}>
+                        <div 
+                          className={`px-4 py-2 rounded-2xl max-w-xs md:max-w-sm shadow text-sm ${
+                            isMe
+                              ? "bg-blue-500 text-white rounded-br-none"
+                              : "bg-gray-300 dark:bg-gray-600 text-black dark:text-white rounded-bl-none"
+                          }`}
+                          onClick={() => isMe && setMessageOptionsId(messageOptionsId === msg.id ? null : msg.id)}
+                        >
+                          {msg.deletedForEveryone ? (
+                            <span className="italic text-gray-500 dark:text-gray-400">
+                              This message was deleted
+                            </span>
+                          ) : (
+                            msg.text
+                          )}
+                          <div className="text-xs opacity-70 mt-1 flex items-center gap-1">
                             {formatTimestamp(msg.timestamp)}
+                            {isMe && (
+                              <div className="ml-1">
+                                {msg.readBy?.length > 0 ? (
+                                  <span title="Read">✓✓</span>
+                                ) : (
+                                  <span title="Sent">✓</span>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </div>
+                        
+                        {/* Message options dropdown */}
+                        {messageOptionsId === msg.id && isMe && !msg.deletedForEveryone && (
+                          <div className="absolute top-full right-0 mt-1 bg-white dark:bg-gray-800 rounded-lg shadow-lg py-1 z-10">
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await deleteMessageForEveryone(selectedChat.id, msg.id);
+                                  setMessageOptionsId(null);
+                                } catch (error) {
+                                  console.error('Error deleting message:', error);
+                                }
+                              }}
+                              className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700"
+                            >
+                              Delete for everyone
+                            </button>
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await deleteMessageForMe(selectedChat.id, msg.id, user.uid);
+                                  setMessageOptionsId(null);
+                                } catch (error) {
+                                  console.error('Error deleting message:', error);
+                                }
+                              }}
+                              className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700"
+                            >
+                              Delete for me
+                            </button>
+                          </div>
+                        )}
                       </div>
                     );
                   })}

@@ -111,11 +111,13 @@ export const getUserConversations = async (userId) => {
 export const sendMessage = async (conversationId, senderId, text) => {
   const { collection, doc, addDoc, updateDoc, Timestamp } = await import("firebase/firestore");
   const messagesRef = collection(db, "conversations", conversationId, "messages");
-  await addDoc(messagesRef, {
+  const messageDoc = await addDoc(messagesRef, {
     senderId,
     text,
     timestamp: Timestamp.now(),
-    read: false,
+    readBy: [],
+    deletedFor: [],
+    deletedForEveryone: false,
   });
   
   // Update conversation last message
@@ -124,6 +126,33 @@ export const sendMessage = async (conversationId, senderId, text) => {
     lastMessage: text,
     lastMessageAt: Timestamp.now(),
     lastMessageBy: senderId,
+  });
+
+  return messageDoc.id;
+};
+
+export const markMessageAsRead = async (conversationId, messageId, userId) => {
+  const { doc, updateDoc, arrayUnion } = await import("firebase/firestore");
+  const messageRef = doc(db, "conversations", conversationId, "messages", messageId);
+  await updateDoc(messageRef, {
+    readBy: arrayUnion(userId)
+  });
+};
+
+export const deleteMessageForMe = async (conversationId, messageId, userId) => {
+  const { doc, updateDoc, arrayUnion } = await import("firebase/firestore");
+  const messageRef = doc(db, "conversations", conversationId, "messages", messageId);
+  await updateDoc(messageRef, {
+    deletedFor: arrayUnion(userId)
+  });
+};
+
+export const deleteMessageForEveryone = async (conversationId, messageId) => {
+  const { doc, updateDoc } = await import("firebase/firestore");
+  const messageRef = doc(db, "conversations", conversationId, "messages", messageId);
+  await updateDoc(messageRef, {
+    deletedForEveryone: true,
+    text: "This message was deleted"
   });
 };
 

@@ -73,12 +73,14 @@ export default function Navbar() {
       <div className="flex items-center justify-between bg-green-50 dark:bg-gray-900 px-3 md:px-6 h-14 md:h-16 shadow-md">
         {/* Left: Logo + Name */}
         <div className="flex items-center gap-2">
-          <img
-            src="/logo.jpeg"
-            alt="Logo"
-            className="w-16 h-10 md:w-120 md:h-12 rounded-xl object-cover"
-          />
-          <span className="font-bold text-lg md:text-xl text-gray-800 dark:text-gray-200"></span>
+          <div className="flex-shrink-0 p-0.5 rounded-lg bg-transparent">
+            <img
+              src="/logo.jpeg"
+              alt="Logo"
+              className="w-10 h-10 md:w-12 md:h-12 rounded-lg object-contain"
+            />
+          </div>
+          <span className="font-bold text-lg md:text-xl text-gray-800 dark:text-gray-200">ScholrPark</span>
         </div>
 
         {/* Center: Navigation - Compact on mobile, full on desktop */}

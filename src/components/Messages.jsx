@@ -300,9 +300,25 @@ export default function Messages({ isOpen, onClose }) {
     >
       {/* Header */}
       <div className="flex justify-between items-center p-3 md:p-4 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-        <h2 className="text-base md:text-lg font-bold dark:text-white truncate flex-1">
-          {aiActive ? "AI Chat" : selectedChat ? selectedChat.otherUser?.displayName || "Chat" : "Messages"}
-        </h2>
+        <div className="flex items-center gap-3 flex-1">
+          {(selectedChat || aiActive) && (
+            <button 
+              onClick={() => {
+                setSelectedChat(null);
+                setAIActive(false);
+                setChatType(null);
+              }} 
+              className="md:hidden text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+          )}
+          <h2 className="text-base md:text-lg font-bold dark:text-white truncate">
+            {aiActive ? "AI Chat" : selectedChat ? selectedChat.otherUser?.displayName || "Chat" : "Messages"}
+          </h2>
+        </div>
         <button onClick={onClose} className="text-red-500 text-xl font-bold ml-2">
           <X size={24} />
         </button>

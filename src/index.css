@@ -2,4 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Use Parkinsans across the site. Tailwind's `font-sans` is configured to use Parkinsans in tailwind.config.js */
+html, body {
+	@apply font-sans;
+}
+
 

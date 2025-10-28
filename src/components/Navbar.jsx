@@ -76,7 +76,7 @@ export default function Navbar() {
         <div className="flex items-center gap-2">
           <div className="flex-shrink-0 p-0.5 rounded-lg bg-transparent">
             <img
-              src="/logo.jpeg"
+              src="/width_1024.webp"
               alt="Logo"
               className="w-10 h-10 md:w-12 md:h-12 rounded-lg object-contain"
             />

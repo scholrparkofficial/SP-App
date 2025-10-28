@@ -7,4 +7,9 @@ html, body {
 	@apply font-sans;
 }
 
+/* Prevent horizontal scrolling on mobile */
+html, body, #root {
+	overflow-x: hidden;
+}
+
 

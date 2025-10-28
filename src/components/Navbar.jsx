@@ -88,26 +88,30 @@ export default function Navbar() {
         <div className="flex items-center gap-3 md:gap-10">
           <Link
             to="/"
-            className="flex flex-col items-center text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+            className="flex flex-col items-center text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors p-2 rounded"
+            aria-label="Home"
           >
-            <Home size={20} />
+            <Home size={22} />
             <span className="text-xs md:text-sm">Home</span>
           </Link>
 
+          {/* Hidden on small screens to simplify mobile navbar */}
           <Link
             to="/private-batches"
-            className="flex flex-col items-center text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+            className="hidden md:flex flex-col items-center text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors p-2 rounded"
+            aria-label="Private Batches"
           >
-            <BookOpen size={20} />
-            <span className="text-xs md:text-sm hidden md:inline">Private Batches</span>
-            <span className="text-xs md:hidden">Batches</span>
+            <BookOpen size={22} />
+            <span className="text-xs md:text-sm">Private Batches</span>
           </Link>
 
+          {/* Hidden on small screens to keep navbar compact */}
           <Link
             to="/your-notes"
-            className="flex flex-col items-center text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+            className="hidden md:flex flex-col items-center text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors p-2 rounded"
+            aria-label="Notes"
           >
-            <FileText size={20} />
+            <FileText size={22} />
             <span className="text-xs md:text-sm">Notes</span>
           </Link>
 
@@ -117,9 +121,10 @@ export default function Navbar() {
               setIsNotificationsOpen(false);
               setIsProfileOpen(false);
             }}
-            className="flex flex-col items-center text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+            className="flex flex-col items-center text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors p-2 rounded"
+            aria-label="Messages"
           >
-            <MessageCircle size={20} />
+            <MessageCircle size={22} />
             <span className="text-xs md:text-sm hidden md:inline">Messages</span>
             <span className="text-xs md:hidden">Chat</span>
           </button>
@@ -130,9 +135,10 @@ export default function Navbar() {
               setIsMessagesOpen(false);
               setIsProfileOpen(false);
             }}
-            className="flex flex-col items-center text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+            className="flex flex-col items-center text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors p-2 rounded"
+            aria-label="Notifications"
           >
-            <Bell size={20} />
+            <Bell size={22} />
             <span className="text-xs md:text-sm hidden md:inline">Notifications</span>
             <span className="text-xs md:hidden">Alerts</span>
           </button>
@@ -170,11 +176,12 @@ export default function Navbar() {
               setIsNotificationsOpen(false);
             }}
             className="focus:outline-none"
+            aria-label="Open profile"
           >
             <img
-              src="/avatar.png"
-              alt="Profile"
-              className="w-8 h-8 md:w-10 md:h-10 rounded-full border border-gray-300 dark:border-gray-600"
+              src={user?.photoURL || "/avatar.png"}
+              alt={user?.displayName || "Profile"}
+              className="w-8 h-8 md:w-10 md:h-10 rounded-full border border-gray-300 dark:border-gray-600 object-cover"
             />
           </button>
           
@@ -227,6 +234,27 @@ export default function Navbar() {
             className="flex items-center gap-2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700"
           >
             <Settings size={18} className="text-gray-700 dark:text-gray-300" /> <span className="text-gray-700 dark:text-gray-300">Account Settings</span>
+          </button>
+
+          {/* Notes & Private Batches - accessible from profile on mobile */}
+          <button
+            onClick={() => {
+              setIsProfileOpen(false);
+              navigate('/your-notes');
+            }}
+            className="md:hidden flex items-center gap-2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700"
+          >
+            <FileText size={18} className="text-gray-700 dark:text-gray-300" /> <span className="text-gray-700 dark:text-gray-300">Notes</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setIsProfileOpen(false);
+              navigate('/private-batches');
+            }}
+            className="md:hidden flex items-center gap-2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700"
+          >
+            <BookOpen size={18} className="text-gray-700 dark:text-gray-300" /> <span className="text-gray-700 dark:text-gray-300">Private Batches</span>
           </button>
 
           <button

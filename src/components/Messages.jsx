@@ -18,6 +18,9 @@ import {
   markMessageAsRead,
   deleteMessageForMe,
   deleteMessageForEveryone,
+  markGroupMessageAsRead,
+  deleteGroupMessageForMe,
+  deleteGroupMessageForEveryone,
   db
 } from "../firebase";
 import { onSnapshot, query, orderBy } from "firebase/firestore";
@@ -85,7 +88,7 @@ export default function Messages({ isOpen, onClose }) {
     }
 
     try {
-      const messagesQuery = getConversationMessages(selectedChat.id);
+      const messagesQuery = chatType === "group" ? getGroupMessages(selectedChat.id) : getConversationMessages(selectedChat.id);
       const unsubscribe = onSnapshot(
         messagesQuery, 
         (snapshot) => {
@@ -683,8 +686,20 @@ export default function Messages({ isOpen, onClose }) {
                     if (msg.deletedFor?.includes(user.uid)) return null;
 
                     // Mark message as read if it's not from current user
-                    if (!isMe && msg.readBy && !msg.readBy.includes(user.uid)) {
-                      markMessageAsRead(selectedChat.id, msg.id, user.uid);
+                    if (!isMe) {
+                      try {
+                        if (chatType === "group") {
+                          if (!msg.read || !msg.read.includes(user.uid)) {
+                            markGroupMessageAsRead(selectedChat.id, msg.id, user.uid);
+                          }
+                        } else {
+                          if (msg.readBy && !msg.readBy.includes(user.uid)) {
+                            markMessageAsRead(selectedChat.id, msg.id, user.uid);
+                          }
+                        }
+                      } catch (err) {
+                        console.error('Error marking message read:', err);
+                      }
                     }
 
                     return (
@@ -708,7 +723,7 @@ export default function Messages({ isOpen, onClose }) {
                             {formatTimestamp(msg.timestamp)}
                             {isMe && (
                               <div className="ml-1">
-                                {msg.readBy?.length > 0 ? (
+                                {(msg.readBy?.length > 0 || msg.read?.length > 0) ? (
                                   <span title="Read">✓✓</span>
                                 ) : (
                                   <span title="Sent">✓</span>
@@ -724,10 +739,15 @@ export default function Messages({ isOpen, onClose }) {
                             <button
                               onClick={async () => {
                                 try {
-                                  await deleteMessageForEveryone(selectedChat.id, msg.id);
+                                  if (chatType === "group") {
+                                    await deleteGroupMessageForEveryone(selectedChat.id, msg.id);
+                                  } else {
+                                    await deleteMessageForEveryone(selectedChat.id, msg.id);
+                                  }
                                   setMessageOptionsId(null);
                                 } catch (error) {
-                                  console.error('Error deleting message:', error);
+                                  console.error('Error deleting message for everyone:', error);
+                                  alert('Failed to delete message for everyone.');
                                 }
                               }}
                               className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700"
@@ -737,10 +757,15 @@ export default function Messages({ isOpen, onClose }) {
                             <button
                               onClick={async () => {
                                 try {
-                                  await deleteMessageForMe(selectedChat.id, msg.id, user.uid);
+                                  if (chatType === "group") {
+                                    await deleteGroupMessageForMe(selectedChat.id, msg.id, user.uid);
+                                  } else {
+                                    await deleteMessageForMe(selectedChat.id, msg.id, user.uid);
+                                  }
                                   setMessageOptionsId(null);
                                 } catch (error) {
-                                  console.error('Error deleting message:', error);
+                                  console.error('Error deleting message for me:', error);
+                                  alert('Failed to delete message for you.');
                                 }
                               }}
                               className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700"

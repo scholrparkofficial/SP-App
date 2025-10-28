@@ -270,6 +270,8 @@ export const sendGroupMessage = async (groupId, senderId, text) => {
     text,
     timestamp: Timestamp.now(),
     read: [],
+    deletedFor: [],
+    deletedForEveryone: false,
   });
   
   // Update group last message
@@ -278,6 +280,31 @@ export const sendGroupMessage = async (groupId, senderId, text) => {
     lastMessage: text,
     lastMessageAt: Timestamp.now(),
     lastMessageBy: senderId,
+  });
+};
+
+export const markGroupMessageAsRead = async (groupId, messageId, userId) => {
+  const { doc, updateDoc, arrayUnion } = await import("firebase/firestore");
+  const messageRef = doc(db, "groups", groupId, "messages", messageId);
+  await updateDoc(messageRef, {
+    read: arrayUnion(userId)
+  });
+};
+
+export const deleteGroupMessageForMe = async (groupId, messageId, userId) => {
+  const { doc, updateDoc, arrayUnion } = await import("firebase/firestore");
+  const messageRef = doc(db, "groups", groupId, "messages", messageId);
+  await updateDoc(messageRef, {
+    deletedFor: arrayUnion(userId)
+  });
+};
+
+export const deleteGroupMessageForEveryone = async (groupId, messageId) => {
+  const { doc, updateDoc } = await import("firebase/firestore");
+  const messageRef = doc(db, "groups", groupId, "messages", messageId);
+  await updateDoc(messageRef, {
+    deletedForEveryone: true,
+    text: "This message was deleted"
   });
 };
 

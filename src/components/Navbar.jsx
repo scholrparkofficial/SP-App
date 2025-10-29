@@ -71,7 +71,7 @@ export default function Navbar() {
   return (
     <>
       {/* Navbar */}
-      <div className="flex items-center justify-between bg-green-50 dark:bg-gray-900 px-3 md:px-6 h-14 md:h-16 shadow-md">
+  <div className="flex items-center justify-between bg-green-50 dark:bg-gradient-to-r dark:from-gray-900 dark:to-gray-800 px-3 md:px-6 h-14 md:h-16 shadow-md">
         {/* Left: Logo + Name */}
         <div className="flex items-center gap-2">
           <div className="flex-shrink-0 p-0.5 rounded-lg bg-transparent">

@@ -25,6 +25,34 @@ import {
 } from "../firebase";
 import { onSnapshot, query, orderBy } from "firebase/firestore";
 
+// Simple Dice's coefficient bigram similarity (returns 0..1)
+function bigramSimilarity(a = "", b = "") {
+  const s = String(a).toLowerCase();
+  const t = String(b).toLowerCase();
+  if (!s.length || !t.length) return 0;
+  if (s === t) return 1;
+  const makeBigrams = (str) => {
+    const out = [];
+    for (let i = 0; i < str.length - 1; i++) {
+      out.push(str.slice(i, i + 2));
+    }
+    return out;
+  };
+  const sB = makeBigrams(s);
+  const tB = makeBigrams(t);
+  if (sB.length === 0 || tB.length === 0) return 0;
+  let intersection = 0;
+  const tBcopy = tB.slice();
+  sB.forEach((bg) => {
+    const idx = tBcopy.indexOf(bg);
+    if (idx > -1) {
+      intersection++;
+      tBcopy.splice(idx, 1);
+    }
+  });
+  return (2.0 * intersection) / (sB.length + tB.length);
+}
+
 // ✅ Initialize Gemini
 const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
@@ -49,6 +77,16 @@ export default function Messages({ isOpen, onClose }) {
   const [messageOptionsId, setMessageOptionsId] = useState(null); // Track which message's options are shown
   const [showHelp, setShowHelp] = useState(false);
   const messagesEndRef = useRef(null);
+  const [panelWidth, setPanelWidth] = useState(() => {
+    try {
+      return localStorage.getItem('messagesPanelWidth') || '33%';
+    } catch (e) {
+      return '33%';
+    }
+  });
+  const [isDragging, setIsDragging] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(typeof window !== 'undefined' ? window.innerWidth >= 768 : true);
+  const resizerRef = useRef(null);
 
   // AI chat messages
   const [aiMessages, setAIMessages] = useState([
@@ -60,6 +98,47 @@ export default function Messages({ isOpen, onClose }) {
   ]);
 
   // Load conversations on mount
+  useEffect(() => {
+    const onResize = () => setIsDesktop(window.innerWidth >= 768);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  // Save panel width when changed
+  useEffect(() => {
+    try {
+      localStorage.setItem('messagesPanelWidth', panelWidth);
+    } catch (e) {
+      // ignore
+    }
+  }, [panelWidth]);
+
+  useEffect(() => {
+    const onMove = (e) => {
+      if (!isDragging) return;
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const newWidth = Math.max(300, window.innerWidth - clientX); // anchored to right
+      const maxW = Math.floor(window.innerWidth * 0.95);
+      const final = Math.min(newWidth, maxW);
+      setPanelWidth(final + 'px');
+    };
+
+    const onUp = () => setIsDragging(false);
+
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('touchmove', onMove, { passive: true });
+    window.addEventListener('mouseup', onUp);
+    window.addEventListener('touchend', onUp);
+
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('touchmove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      window.removeEventListener('touchend', onUp);
+    };
+  }, [isDragging]);
+
+  // Load conversations when user becomes available
   useEffect(() => {
     if (user) {
       loadConversations();
@@ -161,9 +240,18 @@ export default function Messages({ isOpen, onClose }) {
       const results = await searchUsers(searchTerm);
       // Filter out current user
       const filtered = results.filter(u => u.uid !== user.uid);
-      setSearchResults(filtered);
-      if (filtered.length === 0 && searchTerm.trim()) {
-        setSearchError("No users found");
+
+      // Apply fuzzy matching (require ~50% bigram similarity with name or email)
+      const threshold = 0.5;
+      const matches = filtered.filter((u) => {
+        const nameScore = bigramSimilarity(searchTerm, u.displayName || "");
+        const emailScore = bigramSimilarity(searchTerm, u.email || "");
+        return Math.max(nameScore, emailScore) >= threshold;
+      });
+
+      setSearchResults(matches);
+      if (matches.length === 0 && searchTerm.trim()) {
+        setSearchError("No close matches");
       }
     } catch (error) {
       console.error("Error searching users:", error);
@@ -302,12 +390,30 @@ export default function Messages({ isOpen, onClose }) {
 
   return (
     <div
-      className={`fixed top-0 right-0 h-full w-full md:w-1/3 bg-white dark:bg-gray-800 shadow-lg transform transition-transform duration-300 z-50 flex flex-col ${
+      style={{
+        width: isDesktop ? panelWidth : '100%',
+        maxWidth: '100vw',
+        boxSizing: 'border-box',
+      }}
+      className={`fixed top-0 right-0 h-full bg-white dark:bg-gray-800 shadow-lg transform transition-transform duration-300 z-50 flex flex-col ${
         isOpen ? "translate-x-0" : "translate-x-full"
       }`}
     >
+      {/* Resizer handle (desktop only) */}
+      {isDesktop && (
+        <div
+          ref={resizerRef}
+          onMouseDown={() => setIsDragging(true)}
+          onTouchStart={() => setIsDragging(true)}
+          className="absolute left-0 top-0 h-full w-6 -ml-6 cursor-col-resize z-50 flex items-center justify-start"
+          title="Drag to resize"
+        >
+          <div className="w-1 h-30 bg-gray-300 dark:bg-gray-600 rounded-r-md ml-1" />
+          <div className="hidden lg:block -ml-1 mb-60 text-xs text-red-500 dark:text-gray-300 rotate-90 origin-left">Drag_to_adjust</div>
+        </div>
+      )}
       {/* Header */}
-      <div className="flex justify-between items-center p-3 md:p-4 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+  <div className="flex justify-between items-center p-3 md:p-4 border-b dark:border-gray-700 bg-gray-50 dark:bg-gradient-to-r dark:from-gray-900 dark:to-gray-800">
         <div className="flex items-center gap-3 flex-1">
           {(selectedChat || aiActive) && (
             <button 
@@ -383,13 +489,14 @@ export default function Messages({ isOpen, onClose }) {
               {searchResults.map((result) => (
                 <div
                   key={result.uid}
-                  className="flex items-center gap-2 p-2 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700"
+                      className="flex items-center gap-2 p-2 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700"
                   onClick={() => startConversation(result)}
                 >
                   <img
-                    src={result.photoURL || "/avatar.png"}
-                    alt={result.displayName}
-                    className="w-8 h-8 rounded-full"
+                        src={result.photoURL || "/avatar.png"}
+                        alt={result.displayName}
+                        onError={(e) => { e.target.onerror = null; e.target.src = '/avatar.png'; }}
+                        className="w-8 h-8 rounded-full object-cover"
                   />
                   <div className="flex-1 min-w-0">
                     <div className="text-sm dark:text-white truncate">{result.displayName}</div>
@@ -499,7 +606,8 @@ export default function Messages({ isOpen, onClose }) {
                   <img
                     src={otherUser?.photoURL || "/avatar.png"}
                     alt={otherUser?.displayName || "User"}
-                    className="w-8 h-8 rounded-full"
+                    onError={(e) => { e.target.onerror = null; e.target.src = '/avatar.png'; }}
+                    className="w-8 h-8 rounded-full object-cover"
                   />
                   <div className="flex-1 min-w-0">
                     <div className="text-sm dark:text-white truncate">
@@ -554,7 +662,8 @@ export default function Messages({ isOpen, onClose }) {
                       <img
                         src={result.photoURL || "/avatar.png"}
                         alt={result.displayName}
-                        className="w-10 h-10 rounded-full"
+                        onError={(e) => { e.target.onerror = null; e.target.src = '/avatar.png'; }}
+                        className="w-10 h-10 rounded-full object-cover"
                       />
                       <div className="flex-1 min-w-0">
                         <div className="text-sm dark:text-white truncate">{result.displayName}</div>
@@ -563,6 +672,9 @@ export default function Messages({ isOpen, onClose }) {
                     </div>
                   ))}
                 </div>
+              )}
+              {searchResults.length > 0 && (
+                <div className="p-2 text-xs text-gray-500 dark:text-gray-400">Showing close matches only</div>
               )}
 
               {/* Create Group Button - Mobile */}
@@ -706,9 +818,9 @@ export default function Messages({ isOpen, onClose }) {
                       <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"} group relative`}>
                         <div 
                           className={`px-4 py-2 rounded-2xl max-w-xs md:max-w-sm shadow text-sm ${
-                            isMe
-                              ? "bg-blue-500 text-white rounded-br-none"
-                              : "bg-gray-300 dark:bg-gray-600 text-black dark:text-white rounded-bl-none"
+                isMe
+                  ? "bg-blue-500 text-white rounded-br-none"
+                  : "bg-gray-300 dark:bg-gray-700 text-black dark:text-white rounded-bl-none"
                           }`}
                           onClick={() => isMe && setMessageOptionsId(messageOptionsId === msg.id ? null : msg.id)}
                         >

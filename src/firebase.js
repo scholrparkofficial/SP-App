@@ -2,6 +2,7 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
 import { getFirestore, collection, query, orderBy } from "firebase/firestore";
+import { getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
 const firebaseConfig = {
   apiKey: "AIzaSyDYKhtMkqa9HSEk193JNC5Nuv2Q4rRkbG4",
@@ -16,6 +17,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+export const storage = getStorage(app);
 export const googleProvider = new GoogleAuthProvider();
 
 export const loginWithGoogle = async () => {
@@ -65,6 +67,79 @@ export const createUserDocument = async (user) => {
     createdAt: new Date(),
   });
   return userRef;
+};
+
+// Video helpers: upload to Storage and store metadata in Firestore
+export const uploadVideoFile = ({ file, title, description, uploaderId, thumbnailBlob, onProgress } = {}) => {
+  // Returns { promise, cancel }
+  // promise resolves to { id, videoUrl, thumbnailUrl }
+  const ts = Date.now();
+  const videoPath = `videos/${ts}_${file.name}`;
+  const videoStorageRef = storageRef(storage, videoPath);
+  const uploadTask = uploadBytesResumable(videoStorageRef, file);
+
+  const main = (async () => {
+    const { collection, addDoc } = await import('firebase/firestore');
+
+    // Track progress
+    const uploadPromise = new Promise((resolve, reject) => {
+      uploadTask.on('state_changed', (snapshot) => {
+        if (onProgress && snapshot.totalBytes) {
+          const percent = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+          try { onProgress(percent); } catch (e) {}
+        }
+      }, (err) => reject(err), () => resolve());
+    });
+
+    await uploadPromise;
+    const videoUrl = await getDownloadURL(videoStorageRef);
+
+    let thumbnailUrl = null;
+    if (thumbnailBlob) {
+      const thumbPath = `videos/thumbnails/${ts}_${file.name}.jpg`;
+      const thumbRef = storageRef(storage, thumbPath);
+      await uploadBytesResumable(thumbRef, thumbnailBlob);
+      thumbnailUrl = await getDownloadURL(thumbRef);
+    }
+
+    // Store metadata in Firestore 'videos' collection
+    const videosCol = collection(db, 'videos');
+    const { serverTimestamp } = await import('firebase/firestore');
+    const docRef = await addDoc(videosCol, {
+      title,
+      description,
+      uploaderId,
+      videoUrl,
+      thumbnailUrl,
+      createdAt: serverTimestamp(),
+    });
+
+    return { id: docRef.id, videoUrl, thumbnailUrl };
+  })();
+
+  const cancel = () => {
+    try {
+      if (uploadTask && typeof uploadTask.cancel === 'function') uploadTask.cancel();
+    } catch (e) {}
+  };
+
+  return { promise: main, cancel };
+};
+
+export const getVideos = async (limitCount = 50) => {
+  const { collection, getDocs, query, orderBy } = await import('firebase/firestore');
+  const videosCol = collection(db, 'videos');
+  const q = query(videosCol, orderBy('createdAt', 'desc'));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+};
+
+export const getVideoById = async (id) => {
+  const { doc, getDoc } = await import('firebase/firestore');
+  const docRef = doc(db, 'videos', id);
+  const snap = await getDoc(docRef);
+  if (!snap.exists()) return null;
+  return { id: snap.id, ...snap.data() };
 };
 
 export const searchUsers = async (searchTerm) => {

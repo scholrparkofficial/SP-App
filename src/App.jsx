@@ -11,6 +11,8 @@ import Messages from "./components/Messages";
 import AIChat from "./components/AIChat";
 import BatchPage from "./components/BatchPage";
 import VideoPage from "./components/VideoPage";
+import Videos from "./components/Videos";
+import UploadVideo from "./components/UploadVideo";
 import YourNoteEditor from "./components/YourNoteEditor";
 import YourNotesLibrary from "./components/YourNotesLibrary";
 import AccountSettings from "./components/AccountSettings";
@@ -64,6 +66,8 @@ function AppWrapper() {
         <Route path="/messages" element={<Messages />} />
         <Route path="/batch/:id" element={<BatchPage />} />
         <Route path="/video/:videoId" element={<VideoPage />} />
+  <Route path="/videos" element={<Videos />} />
+  <Route path="/upload" element={<UploadVideo />} />
         <Route path="/ai-chat" element={<AIChat />} />
         <Route path="/account" element={<AccountSettings />} />
       </Routes>

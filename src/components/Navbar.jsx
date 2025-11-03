@@ -95,6 +95,15 @@ export default function Navbar() {
             <span className="text-xs md:text-sm">Home</span>
           </Link>
 
+          <Link
+            to="/videos"
+            className="flex flex-col items-center text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors p-2 rounded"
+            aria-label="Videos"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M10 8.64L15.27 12 10 15.36V8.64M21 7.5v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-9A2 2 0 0 1 5 5.5h14a2 2 0 0 1 2 2z"/></svg>
+            <span className="text-xs md:text-sm">Videos</span>
+          </Link>
+
           {/* Hidden on small screens to simplify mobile navbar */}
           <Link
             to="/private-batches"
@@ -234,6 +243,18 @@ export default function Navbar() {
             className="flex items-center gap-2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700"
           >
             <Settings size={18} className="text-gray-700 dark:text-gray-300" /> <span className="text-gray-700 dark:text-gray-300">Account Settings</span>
+          </button>
+
+          {/* Upload - visible for signed-in users */}
+          <button
+            onClick={() => {
+              setIsProfileOpen(false);
+              navigate('/upload');
+            }}
+            className="flex items-center gap-2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-700 dark:text-gray-300" viewBox="0 0 24 24" fill="currentColor"><path d="M12 5v8m0 0l3-3m-3 3l-3-3M4 20h16v-2H4v2z"/></svg>
+            <span className="text-gray-700 dark:text-gray-300">Upload Video</span>
           </button>
 
           {/* Notes & Private Batches - accessible from profile on mobile */}

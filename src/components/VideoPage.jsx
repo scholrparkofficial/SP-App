@@ -1,32 +1,42 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ThumbsUp, Share2, UserPlus } from "lucide-react";
-
-const videos = [
-  { id: "KMoMIWtYXKw", title: "Video 1", description: "This is the description for video 1." },
-  { id: "dQw4w9WgXcQ", title: "Video 2", description: "Description for video 2 goes here." },
-  { id: "3JZ_D3ELwOQ", title: "Video 3", description: "An overview of video 3 content." },
-  { id: "tAGnKpE4NCI", title: "Video 4", description: "Summary of video 4 topics." },
-  { id: "M7lc1UVf-VE", title: "Video 5", description: "Brief description for video 5." },
-  { id: "eX2qFMC8cFo", title: "Video 6", description: "Deep dive into advanced topics." },
-  { id: "kJQP7kiw5Fk", title: "Video 7", description: "Learn tips and tricks for productivity." },
-  { id: "fJ9rUzIMcZQ", title: "Video 8", description: "Special tutorial on practical applications." },
-];
+import { getVideoById, getVideos } from "../firebase";
 
 export default function VideoPage() {
   const { videoId } = useParams();
   const navigate = useNavigate();
-  const video = videos.find(v => v.id === videoId);
+  const [video, setVideo] = useState(null);
+  const [suggested, setSuggested] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [likes, setLikes] = useState(0);
+  const [followers, setFollowers] = useState(0);
 
-  const [likes, setLikes] = useState(124);
-  const [followers, setFollowers] = useState(500);
-
-  if (!video) return <p>Video not found</p>;
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      setLoading(true);
+      try {
+        const v = await getVideoById(videoId);
+        const list = await getVideos();
+        if (!mounted) return;
+        setVideo(v);
+        setSuggested(list.filter(i => i.id !== videoId));
+        setLikes((v?.likes) || 0);
+        setFollowers((v?.followers) || 0);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => (mounted = false);
+  }, [videoId]);
 
   const handleShare = () => {
     const shareData = {
-      title: video.title,
-      text: video.description,
+      title: video?.title,
+      text: video?.description,
       url: window.location.href,
     };
     if (navigator.share) {
@@ -37,21 +47,21 @@ export default function VideoPage() {
     }
   };
 
+  if (loading) return <div className="p-6">Loading...</div>;
+  if (!video) return <div className="p-6">Video not found</div>;
+
   return (
     <div className="bg-gray-50 dark:bg-gray-900 min-h-screen">
       <div className="max-w-7xl mx-auto p-6 flex flex-col lg:flex-row gap-8">
         {/* Main Video Area */}
         <div className="flex-1 flex flex-col gap-4">
-          <iframe
-            width="100%"
-            height="500"
-            className="rounded-2xl shadow-lg"
-            src={`https://www.youtube-nocookie.com/embed/${video.id}?si=w_Fqz3ClqkWqfkYR`}
-            title={video.title}
-            frameBorder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            allowFullScreen
-          ></iframe>
+          {video.videoUrl ? (
+            <div className="rounded-2xl shadow-lg overflow-hidden bg-black">
+              <video className="w-full" controls src={video.videoUrl} />
+            </div>
+          ) : (
+            <div className="rounded-2xl shadow-lg p-8 bg-gray-200 text-center">No playable video URL</div>
+          )}
 
           {/* Video Info */}
           <div className="flex flex-col gap-3 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md">
@@ -96,20 +106,20 @@ export default function VideoPage() {
           style={{ maxHeight: "80vh", overflowY: "auto" }}
         >
           <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-2">Suggested Videos</h2>
-          {videos.filter(v => v.id !== video.id).map(v => (
+          {suggested.map(v => (
             <div
               key={v.id}
               className="flex gap-3 cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-2 rounded-lg shadow-sm transition-all duration-200"
               onClick={() => navigate(`/video/${v.id}`)}
             >
               <img
-                src={`https://img.youtube.com/vi/${v.id}/mqdefault.jpg`}
+                src={v.thumbnailUrl || '/video-placeholder.png'}
                 alt={v.title}
                 className="w-32 h-20 object-cover rounded-lg"
               />
               <div className="flex flex-col justify-center">
                 <p className="font-semibold text-gray-800 dark:text-gray-100">{v.title}</p>
-                <p className="text-gray-500 dark:text-gray-400 text-sm">{v.description.slice(0, 60)}...</p>
+                <p className="text-gray-500 dark:text-gray-400 text-sm">{(v.description || '').slice(0, 60)}...</p>
               </div>
             </div>
           ))}

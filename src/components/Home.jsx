@@ -1,44 +1,66 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-
-const videos = [
-  { id: "KMoMIWtYXKw", title: "Video 1", description: "This is the description for video 1. It explains the content briefly." },
-  { id: "dQw4w9WgXcQ", title: "Video 2", description: "Description for video 2 goes here. It highlights key points." },
-  { id: "3JZ_D3ELwOQ", title: "Video 3", description: "An overview of video 3 content and what you can learn." },
-  { id: "tAGnKpE4NCI", title: "Video 4", description: "Summary of video 4 describing the main topics covered." },
-  { id: "M7lc1UVf-VE", title: "Video 5", description: "Brief description for video 5 to give context to viewers." },
-];
+import { getVideos } from "../firebase";
 
 export default function Home() {
   const navigate = useNavigate();
+  const [videos, setVideos] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const list = await getVideos();
+        if (!mounted) return;
+        setVideos(list || []);
+      } catch (err) {
+        console.error('Failed to load videos', err);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+
+    return () => (mounted = false);
+  }, []);
 
   return (
     <div className="bg-green-50 dark:bg-gray-900 min-h-screen">
-      <div className="p-8 space-y-8 max-w-7xl mx-auto">
-        {videos.map(({ id, title, description }) => (
-          <div
-            key={id}
-            className="flex flex-col md:flex-row bg-white dark:bg-gray-800 shadow-md dark:shadow-gray-700 rounded-2xl overflow-hidden hover:shadow-lg dark:hover:shadow-gray-600 transition-shadow duration-300 cursor-pointer"
-            onClick={() => navigate(`/video/${id}`)}
-          >
-            <iframe
-              width="100%"
-              height="285"
-              className="md:w-96 md:h-56 w-full pointer-events-none"
-              src={`https://www.youtube-nocookie.com/embed/${id}?si=w_Fqz3ClqkWqfkYR&theme=dark`}
-              title={title}
-              frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              referrerPolicy="strict-origin-when-cross-origin"
-              allowFullScreen
-            ></iframe>
-
-            <div className="p-6 flex-1 flex flex-col justify-center">
-              <h3 className="text-2xl font-bold mb-3 text-gray-800 dark:text-gray-100">{title}</h3>
-              <p className="text-gray-600 dark:text-gray-300 text-base">{description}</p>
-            </div>
+      <div className="p-6 sm:p-8 max-w-7xl mx-auto">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-gray-100">Latest Videos</h1>
+          <div>
+            <button onClick={() => navigate('/videos')} className="px-3 py-1 bg-blue-600 text-white rounded">Browse all</button>
           </div>
-        ))}
+        </div>
+
+        {loading ? (
+          <p className="text-gray-600 dark:text-gray-300">Loading videos...</p>
+        ) : (
+          <>
+            {videos.length === 0 ? (
+              <div className="py-20 text-center bg-white dark:bg-gray-800 rounded-lg shadow">
+                <p className="text-xl font-semibold text-gray-800 dark:text-gray-100">No videos uploaded yet</p>
+                <p className="text-gray-600 dark:text-gray-300 mt-2">Be the first to upload a video.</p>
+                <div className="mt-4">
+                  <button onClick={() => navigate('/upload')} className="px-4 py-2 bg-green-600 text-white rounded">Upload a video</button>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {videos.map(v => (
+                  <div key={v.id} className="bg-white dark:bg-gray-800 rounded-lg overflow-hidden shadow cursor-pointer" onClick={() => navigate(`/video/${v.id}`)}>
+                    <img src={v.thumbnailUrl || '/video-placeholder.png'} alt={v.title} className="w-full h-44 object-cover" />
+                    <div className="p-4">
+                      <h3 className="font-semibold text-lg text-gray-900 dark:text-white">{v.title}</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">{(v.description || '').slice(0, 100)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );

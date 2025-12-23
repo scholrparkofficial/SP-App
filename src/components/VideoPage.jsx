@@ -100,7 +100,7 @@ export default function VideoPage() {
             {/* Action Buttons with Counters */}
             <div className="flex gap-4 mt-4 items-center">
               <button
-                className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg"
+                className="flex items-center gap-2 px-4 py-2 btn-primary rounded-lg"
                 onClick={() => setLikes(likes + 1)}
               >
                 <ThumbsUp size={18} /> Like ({likes})
@@ -110,7 +110,7 @@ export default function VideoPage() {
               {user && user.uid === video.uploaderId && (
                 <button
                   disabled={deleting}
-                  className="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg ml-auto"
+                  className="flex items-center gap-2 px-4 py-2 btn-danger ml-auto"
                   onClick={handleDelete}
                 >
                   {deleting ? 'Deleting...' : 'Delete Video'}
@@ -118,7 +118,7 @@ export default function VideoPage() {
               )}
 
               <button
-                className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg"
+                className="flex items-center gap-2 px-4 py-2 btn-success rounded-lg"
                 onClick={handleShare}
               >
                 <Share2 size={18} /> Share

@@ -206,7 +206,7 @@ export default function UploadVideo() {
 
           {uploading && (
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded mt-3 overflow-hidden">
-              <div className="bg-blue-600 h-2" style={{ width: `${progress}%` }} />
+              <div className="bg-primary-600 h-2" style={{ width: `${progress}%` }} />
             </div>
           )}
         </form>

@@ -12,4 +12,80 @@ html, body, #root {
 	overflow-x: hidden;
 }
 
+/* Design tokens & components */
+@layer base {
+  :root {
+    --radius: 0.75rem;
+  }
+
+  /* Improve default focus style for accessibility */
+  *:focus {
+    outline: none;
+  }
+  :focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.18); /* subtle blue focus ring */
+    border-radius: var(--radius);
+  }
+}
+
+@layer components {
+  .container-main {
+    @apply max-w-6xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors duration-150;
+  }
+
+  .btn-primary {
+    @apply btn bg-primary-600 text-white hover:bg-primary-700 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary-300;
+  }
+
+  .btn-secondary {
+    @apply btn bg-white border border-gray-200 text-gray-800 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100;
+  }
+
+  .btn-danger {
+    @apply btn bg-danger-600 text-white hover:bg-danger-700 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-red-300;
+  }
+
+  .btn-success {
+    @apply btn bg-success-600 text-white hover:bg-success-700 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-green-300;
+  }
+
+  /* Navbar utilities */
+  .nav-item {
+    @apply inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-primary-300;
+  }
+
+  .nav-item svg {
+    @apply opacity-90;
+  }
+
+  .panel-btn {
+    @apply flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150;
+  }
+
+  .badge-dot {
+    @apply inline-block w-2 h-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-gray-800;
+  }
+
+  .card {
+    @apply bg-white dark:bg-gray-800 rounded-2xl shadow-card p-4;
+  }
+
+  .input {
+    @apply w-full px-3 py-2 border rounded-md bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 focus-visible:ring-2 focus-visible:ring-primary-300;
+  }
+
+  .kbd {
+    @apply inline-block px-2 py-1 text-xs bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded border border-gray-200 dark:border-gray-700;
+  }
+}
+
+@layer utilities {
+  .text-ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+
 

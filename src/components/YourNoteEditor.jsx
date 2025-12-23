@@ -2,6 +2,7 @@
 import React, { useRef, useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Undo, CornerDownRight, Download, Trash2 } from 'lucide-react';
+import { useToast } from '../contexts/ToastContext';
 
 export default function YourNoteEditor() {
   const { noteId } = useParams();
@@ -22,6 +23,7 @@ export default function YourNoteEditor() {
   const activePointerRef = useRef(null);
   const lastPointerTypeRef = useRef(null); // for palm rejection
   const [backgroundImage, setBackgroundImage] = useState(null);
+  const toast = useToast();
 
   // Load note
   useEffect(() => {
@@ -229,13 +231,7 @@ export default function YourNoteEditor() {
     });
   };
 
-  const exportPNG = () => {
-    const dataURL = canvasRef.current.toDataURL('image/png');
-    const a = document.createElement('a');
-    a.href = dataURL;
-    a.download = `${title.replace(/\s+/g, '_') || 'note'}.png`;
-    a.click();
-  };
+  // exportPNG is defined later (avoids duplicate declaration)
 
   const clearNote = () => {
     if (!confirm('Clear the canvas? This cannot be undone.')) return;
@@ -264,7 +260,6 @@ export default function YourNoteEditor() {
     toast.success('Export started');
   };
 
-  const toast = useToast();
 
   const saveNote = () => {
     const canvas = canvasRef.current;

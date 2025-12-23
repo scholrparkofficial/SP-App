@@ -137,12 +137,15 @@ export const uploadVideoFile = ({ file, title, description, uploaderId, thumbnai
 
     const videoResp = await uploadToCloudinary(file, 'video');
     const videoUrl = videoResp?.secure_url || null;
+    const videoPublicId = videoResp?.public_id || null;
 
     let thumbnailUrl = null;
+    let thumbnailPublicId = null;
     if (thumbnailBlob) {
       try {
         const thumbResp = await uploadToCloudinary(thumbnailBlob, 'image');
         thumbnailUrl = thumbResp?.secure_url || null;
+        thumbnailPublicId = thumbResp?.public_id || null;
       } catch (e) {
         // thumbnail upload failed, continue without it
         thumbnailUrl = null;
@@ -156,11 +159,13 @@ export const uploadVideoFile = ({ file, title, description, uploaderId, thumbnai
       description,
       uploaderId,
       videoUrl,
+      videoPublicId,
       thumbnailUrl,
+      thumbnailPublicId,
       createdAt: serverTimestamp(),
     });
 
-    return { id: docRef.id, videoUrl, thumbnailUrl };
+    return { id: docRef.id, videoUrl, thumbnailUrl, videoPublicId, thumbnailPublicId };
   })();
 
   const cancel = () => {
@@ -187,6 +192,77 @@ export const getVideoById = async (id) => {
   const snap = await getDoc(docRef);
   if (!snap.exists()) return null;
   return { id: snap.id, ...snap.data() };
+};
+
+// Get videos uploaded by a specific user
+export const getVideosByUploader = async (uploaderId, limitCount = 100) => {
+  const { collection, query, where, orderBy, getDocs } = await import('firebase/firestore');
+  const videosCol = collection(db, 'videos');
+
+  try {
+    const q = query(videosCol, where('uploaderId', '==', uploaderId), orderBy('createdAt', 'desc'));
+    const snapshot = await getDocs(q);
+    return { data: snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })), indexRequired: false };
+  } catch (err) {
+    // If Firestore requires a composite index, fallback to a simple where() and sort client-side
+    // Detect index error from message
+    if (err && /index/i.test(err.message || '')) {
+      const q2 = query(videosCol, where('uploaderId', '==', uploaderId));
+      const snapshot = await getDocs(q2);
+      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      // Sort by createdAt (try Timestamp.toMillis if available)
+      list.sort((a, b) => {
+        const aTime = a.createdAt?.toMillis?.() || new Date(a.createdAt || 0).getTime() || 0;
+        const bTime = b.createdAt?.toMillis?.() || new Date(b.createdAt || 0).getTime() || 0;
+        return bTime - aTime;
+      });
+      return { data: list, indexRequired: true, originalError: (err && err.message) || String(err) };
+    }
+
+    throw err;
+  }
+};
+
+// Increment view counter for a video
+export const incrementVideoView = async (id) => {
+  const { doc, updateDoc, increment } = await import('firebase/firestore');
+  const docRef = doc(db, 'videos', id);
+  await updateDoc(docRef, { views: increment(1) });
+};
+
+// Delete video helper: delete Cloudinary resources via server, then delete Firestore document
+export const deleteVideo = async ({ id, videoPublicId, thumbnailPublicId } = {}) => {
+  if (!id) throw new Error('id is required');
+
+  // Call server to delete Cloudinary resources (if present)
+  const serverUrl = import.meta.env.VITE_CLOUDINARY_SERVER_URL || '';
+
+  try {
+    if (videoPublicId && serverUrl) {
+      await fetch(`${serverUrl.replace(/\/$/, '')}/api/cloudinary/delete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ publicId: videoPublicId, resourceType: 'video' }),
+      });
+    }
+    if (thumbnailPublicId && serverUrl) {
+      await fetch(`${serverUrl.replace(/\/$/, '')}/api/cloudinary/delete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ publicId: thumbnailPublicId, resourceType: 'image' }),
+      });
+    }
+  } catch (err) {
+    // Log server errors but continue to attempt Firestore delete
+    console.error('Error deleting Cloudinary resources', err);
+    throw err;
+  }
+
+  // Delete Firestore document
+  const { doc, deleteDoc } = await import('firebase/firestore');
+  const docRef = doc(db, 'videos', id);
+  await deleteDoc(docRef);
+  return true;
 };
 
 export const searchUsers = async (searchTerm) => {

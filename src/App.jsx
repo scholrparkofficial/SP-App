@@ -16,6 +16,7 @@ import UploadVideo from "./components/UploadVideo";
 import YourNoteEditor from "./components/YourNoteEditor";
 import YourNotesLibrary from "./components/YourNotesLibrary";
 import AccountSettings from "./components/AccountSettings";
+import ManageVideos from "./components/ManageVideos";
 
 
 function AppWrapper() {
@@ -70,6 +71,7 @@ function AppWrapper() {
   <Route path="/upload" element={<UploadVideo />} />
         <Route path="/ai-chat" element={<AIChat />} />
         <Route path="/account" element={<AccountSettings />} />
+        <Route path="/my-videos" element={<ManageVideos />} />
       </Routes>
 
       <LoginModal

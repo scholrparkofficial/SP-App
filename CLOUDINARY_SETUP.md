@@ -30,7 +30,21 @@ Follow these steps to enable video uploads to Cloudinary from the frontend:
    - `src/components/UploadVideo.jsx` implements a 50 MB sample limit. Change `MAX_BYTES` if you want to allow larger uploads (Cloudinary free tier may have limits).
 
 7) Verify
-   - Open `/upload`, select a video and upload. The video will be uploaded to Cloudinary (progress shown) and a metadata record will be created in Firestore `videos` collection with `videoUrl` and `thumbnailUrl`.
+   - Open `/upload`, select a video and upload. The video will be uploaded to Cloudinary (progress shown) and a metadata record will be created in Firestore `videos` collection with `videoUrl`, `videoPublicId`, `thumbnailUrl` and `thumbnailPublicId`.
+
+9) Deleting videos
+   - To delete a video from the app, the uploader can open the video page and click **Delete Video** (confirmation required).
+   - Deleting performs two actions:
+     1. Calls a server endpoint (`POST /api/cloudinary/delete`) to remove the video and thumbnail from Cloudinary (requires server-side Cloudinary API key/secret)
+     2. Deletes the Firestore document for the video from the `videos` collection
+   - To run the server locally, create `server/.env` with:
+     ```
+     CLOUDINARY_CLOUD_NAME=your-cloud-name
+     CLOUDINARY_API_KEY=your-api-key
+     CLOUDINARY_API_SECRET=your-api-secret
+     ```
+   - Start the server in `server/` folder: `npm install && npm start` (port 4001 by default)
+   - Set `VITE_CLOUDINARY_SERVER_URL` in your client `.env.local` to `http://localhost:4001` (or your hosted URL) and restart the dev server.
 
 Troubleshooting tips
 - If the upload fails immediately, ensure `VITE_CLOUDINARY_CLOUD_NAME` and `VITE_CLOUDINARY_UPLOAD_PRESET` are set and the preset is unsigned.

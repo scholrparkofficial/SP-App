@@ -257,6 +257,18 @@ export default function Navbar() {
             <span className="text-gray-700 dark:text-gray-300">Upload Video</span>
           </button>
 
+          {/* My Videos - management page for creators */}
+          <button
+            onClick={() => {
+              setIsProfileOpen(false);
+              navigate('/my-videos');
+            }}
+            className="flex items-center gap-2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-700 dark:text-gray-300" viewBox="0 0 24 24" fill="currentColor"><path d="M5 12h14M12 5v14"/></svg>
+            <span className="text-gray-700 dark:text-gray-300">My Videos</span>
+          </button>
+
           {/* Notes & Private Batches - accessible from profile on mobile */}
           <button
             onClick={() => {

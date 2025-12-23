@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ThumbsUp, Share2, UserPlus } from "lucide-react";
-import { getVideoById, getVideos } from "../firebase";
+import { getVideoById, getVideos, deleteVideo } from "../firebase";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function VideoPage() {
   const { videoId } = useParams();
@@ -11,6 +12,10 @@ export default function VideoPage() {
   const [loading, setLoading] = useState(true);
   const [likes, setLikes] = useState(0);
   const [followers, setFollowers] = useState(0);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
+  const [loadError, setLoadError] = useState(null);
+  const { user } = useAuth();
 
   useEffect(() => {
     let mounted = true;
@@ -26,12 +31,30 @@ export default function VideoPage() {
         setFollowers((v?.followers) || 0);
       } catch (err) {
         console.error(err);
+        if (mounted) setLoadError(err?.message || String(err));
       } finally {
         if (mounted) setLoading(false);
       }
     })();
     return () => (mounted = false);
   }, [videoId]);
+
+  const handleDelete = async () => {
+    if (!video) return;
+    if (!confirm('Are you sure you want to delete this video? This action cannot be undone.')) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteVideo({ id: video.id, videoPublicId: video.videoPublicId, thumbnailPublicId: video.thumbnailPublicId });
+      // Navigate away after delete
+      navigate('/videos');
+    } catch (err) {
+      console.error(err);
+      setDeleteError(err?.message || 'Delete failed');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const handleShare = () => {
     const shareData = {
@@ -48,6 +71,7 @@ export default function VideoPage() {
   };
 
   if (loading) return <div className="p-6">Loading...</div>;
+  if (loadError) return <div className="p-6 text-red-500">Error loading video: {loadError}</div>;
   if (!video) return <div className="p-6">Video not found</div>;
 
   return (
@@ -76,6 +100,17 @@ export default function VideoPage() {
               >
                 <ThumbsUp size={18} /> Like ({likes})
               </button>
+
+              {/* Delete button - only show if uploader */}
+              {user && user.uid === video.uploaderId && (
+                <button
+                  disabled={deleting}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg ml-auto"
+                  onClick={handleDelete}
+                >
+                  {deleting ? 'Deleting...' : 'Delete Video'}
+                </button>
+              )}
 
               <button
                 className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg"

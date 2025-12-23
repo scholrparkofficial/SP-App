@@ -12,6 +12,7 @@ export default function UploadVideo() {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState('');
+  const [serverError, setServerError] = useState(null);
   const [cancelUploadFn, setCancelUploadFn] = useState(null);
   const [thumbPreview, setThumbPreview] = useState(null);
 
@@ -102,10 +103,12 @@ export default function UploadVideo() {
   navigate(`/video/${res.id}`);
     } catch (err) {
       console.error(err);
-      if (err && err.message === 'upload-cancelled') {
+      setServerError(err);
+      const msg = (err && err.message) ? err.message : 'Upload failed. Try again.';
+      if (msg === 'upload-cancelled') {
         setError('Upload cancelled.');
       } else {
-        setError('Upload failed. Try again.');
+        setError(msg);
       }
     } finally {
       setUploading(false);
@@ -167,6 +170,12 @@ export default function UploadVideo() {
           )}
 
           {error && <p className="text-red-500">{error}</p>}
+          {serverError && serverError.message && (
+            <details className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+              <summary className="cursor-pointer">Server details</summary>
+              <pre className="whitespace-pre-wrap mt-2 bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs">{serverError.message}</pre>
+            </details>
+          )}
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <button disabled={uploading} className="flex-1 px-4 py-3 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">

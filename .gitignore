@@ -3,3 +3,6 @@ nextjs-edtech
 AGENTS.md
 .kiro
 .vscode.DS_Store
+
+# Local env files (cloudinary / firebase)
+.env*

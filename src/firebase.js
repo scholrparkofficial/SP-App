@@ -2,7 +2,7 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
 import { getFirestore, collection, query, orderBy } from "firebase/firestore";
-import { getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+// Firebase Storage removed: videos will be uploaded to Cloudinary instead
 
 const firebaseConfig = {
   apiKey: "AIzaSyDYKhtMkqa9HSEk193JNC5Nuv2Q4rRkbG4",
@@ -17,7 +17,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
-export const storage = getStorage(app);
 export const googleProvider = new GoogleAuthProvider();
 
 export const loginWithGoogle = async () => {
@@ -69,42 +68,89 @@ export const createUserDocument = async (user) => {
   return userRef;
 };
 
-// Video helpers: upload to Storage and store metadata in Firestore
+// Video helpers: upload to Cloudinary and store metadata in Firestore
 export const uploadVideoFile = ({ file, title, description, uploaderId, thumbnailBlob, onProgress } = {}) => {
   // Returns { promise, cancel }
   // promise resolves to { id, videoUrl, thumbnailUrl }
-  const ts = Date.now();
-  const videoPath = `videos/${ts}_${file.name}`;
-  const videoStorageRef = storageRef(storage, videoPath);
-  const uploadTask = uploadBytesResumable(videoStorageRef, file);
+  const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+  const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+
+  if (!cloudName || !uploadPreset) {
+    throw new Error('Cloudinary not configured. Set VITE_CLOUDINARY_CLOUD_NAME and VITE_CLOUDINARY_UPLOAD_PRESET in your .env');
+  }
+
+  let xhrVideo = null;
+  let xhrThumb = null;
 
   const main = (async () => {
-    const { collection, addDoc } = await import('firebase/firestore');
+    const { collection, addDoc, serverTimestamp } = await import('firebase/firestore');
 
-    // Track progress
-    const uploadPromise = new Promise((resolve, reject) => {
-      uploadTask.on('state_changed', (snapshot) => {
-        if (onProgress && snapshot.totalBytes) {
-          const percent = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-          try { onProgress(percent); } catch (e) {}
+    const uploadToCloudinary = (fileOrBlob, resourceType = 'video') => new Promise((resolve, reject) => {
+      const url = `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`;
+      const fd = new FormData();
+      fd.append('file', fileOrBlob);
+      fd.append('upload_preset', uploadPreset);
+      if (resourceType === 'video') fd.append('resource_type', 'video');
+
+      const xhr = new XMLHttpRequest();
+      if (resourceType === 'video') xhrVideo = xhr; else xhrThumb = xhr;
+      xhr.open('POST', url);
+
+      xhr.upload.onprogress = function(ev) {
+        if (ev.lengthComputable && onProgress && resourceType === 'video') {
+          const percent = Math.round((ev.loaded / ev.total) * 100);
+          try { onProgress(percent); } catch (e) { }
         }
-      }, (err) => reject(err), () => resolve());
+      };
+
+      xhr.onload = function() {
+        try {
+          const respText = xhr.responseText;
+          const status = xhr.status;
+          if (status >= 200 && status < 300) {
+            const resp = respText ? JSON.parse(respText) : null;
+            resolve(resp);
+            return;
+          }
+
+          // Non-2xx: include any server error details in the message when possible
+          let msg = `Upload failed with status ${status}`;
+          try {
+            const parsed = respText ? JSON.parse(respText) : null;
+            if (parsed && parsed.error) msg += `: ${parsed.error.message || JSON.stringify(parsed.error)}`;
+            else if (parsed && parsed.message) msg += `: ${parsed.message}`;
+            else if (respText) msg += `: ${respText}`;
+          } catch (e) {
+            if (respText) msg += `: ${respText}`;
+          }
+
+          reject(new Error(msg));
+        } catch (e) {
+          reject(new Error('Upload failed (invalid response)'));
+        }
+      };
+
+      xhr.onerror = function() { reject(new Error('Upload failed (network error)')); };
+      xhr.onabort = function() { reject(new Error('upload-cancelled')); };
+      xhr.send(fd);
     });
 
-    await uploadPromise;
-    const videoUrl = await getDownloadURL(videoStorageRef);
+    const videoResp = await uploadToCloudinary(file, 'video');
+    const videoUrl = videoResp?.secure_url || null;
 
     let thumbnailUrl = null;
     if (thumbnailBlob) {
-      const thumbPath = `videos/thumbnails/${ts}_${file.name}.jpg`;
-      const thumbRef = storageRef(storage, thumbPath);
-      await uploadBytesResumable(thumbRef, thumbnailBlob);
-      thumbnailUrl = await getDownloadURL(thumbRef);
+      try {
+        const thumbResp = await uploadToCloudinary(thumbnailBlob, 'image');
+        thumbnailUrl = thumbResp?.secure_url || null;
+      } catch (e) {
+        // thumbnail upload failed, continue without it
+        thumbnailUrl = null;
+      }
     }
 
     // Store metadata in Firestore 'videos' collection
     const videosCol = collection(db, 'videos');
-    const { serverTimestamp } = await import('firebase/firestore');
     const docRef = await addDoc(videosCol, {
       title,
       description,
@@ -119,8 +165,9 @@ export const uploadVideoFile = ({ file, title, description, uploaderId, thumbnai
 
   const cancel = () => {
     try {
-      if (uploadTask && typeof uploadTask.cancel === 'function') uploadTask.cancel();
-    } catch (e) {}
+      if (xhrVideo && typeof xhrVideo.abort === 'function') xhrVideo.abort();
+      if (xhrThumb && typeof xhrThumb.abort === 'function') xhrThumb.abort();
+    } catch (e) { }
   };
 
   return { promise: main, cancel };

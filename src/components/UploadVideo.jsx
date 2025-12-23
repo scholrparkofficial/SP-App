@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { uploadVideoFile } from '../firebase';
+import { useToast } from '../contexts/ToastContext';
+import Tooltip from './Tooltip';
 
 export default function UploadVideo() {
   const { user } = useAuth();
@@ -67,11 +69,14 @@ export default function UploadVideo() {
     }
   });
 
+  const toast = useToast();
+
   const handleUpload = async (e) => {
     e.preventDefault();
     setError('');
     if (!user) {
       setError('You must be signed in to upload.');
+      toast.error('You must be signed in to upload.');
       return;
     }
     if (!file) {
@@ -178,17 +183,25 @@ export default function UploadVideo() {
           )}
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <Tooltip text={uploading ? `Uploading ${progress}%` : 'Upload'}>
             <button disabled={uploading} className="flex-1 px-4 py-3 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">
               {uploading ? `Uploading ${progress}%` : 'Upload'}
             </button>
+          </Tooltip>
+
+          <Tooltip text="Back to videos">
             <button type="button" onClick={() => navigate('/videos')} className="px-4 py-3 border rounded w-full sm:w-auto">
               Back to Videos
             </button>
-            {uploading && (
+          </Tooltip>
+
+          {uploading && (
+            <Tooltip text="Cancel upload in progress">
               <button type="button" onClick={handleCancel} className="px-4 py-3 border rounded w-full sm:w-auto text-red-600">
                 Cancel Upload
               </button>
-            )}
+            </Tooltip>
+          )}
           </div>
 
           {uploading && (

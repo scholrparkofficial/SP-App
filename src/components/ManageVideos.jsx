@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { getVideosByUploader, deleteVideo } from '../firebase';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '../contexts/ToastContext';
 
 export default function ManageVideos() {
   const { user } = useAuth();
@@ -11,6 +12,7 @@ export default function ManageVideos() {
   const [indexRequired, setIndexRequired] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const navigate = useNavigate();
+  const toast = useToast();
 
   useEffect(() => {
     if (!user) return;
@@ -41,9 +43,10 @@ export default function ManageVideos() {
     try {
       await deleteVideo({ id: v.id, videoPublicId: v.videoPublicId, thumbnailPublicId: v.thumbnailPublicId });
       setVideos(prev => prev.filter(x => x.id !== v.id));
+      toast.success('Video deleted');
     } catch (err) {
       console.error(err);
-      alert('Delete failed: ' + (err?.message || String(err)));
+      toast.error('Delete failed: ' + (err?.message || String(err)));
     } finally {
       setDeletingId(null);
     }

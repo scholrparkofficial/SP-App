@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { ThumbsUp, Share2, UserPlus } from "lucide-react";
 import { getVideoById, getVideos, deleteVideo } from "../firebase";
 import { useAuth } from "../contexts/AuthContext";
+import { useToast } from '../contexts/ToastContext';
 
 export default function VideoPage() {
   const { videoId } = useParams();
@@ -39,6 +40,8 @@ export default function VideoPage() {
     return () => (mounted = false);
   }, [videoId]);
 
+  const { success, error, info } = useToast();
+
   const handleDelete = async () => {
     if (!video) return;
     if (!confirm('Are you sure you want to delete this video? This action cannot be undone.')) return;
@@ -46,11 +49,13 @@ export default function VideoPage() {
     setDeleteError(null);
     try {
       await deleteVideo({ id: video.id, videoPublicId: video.videoPublicId, thumbnailPublicId: video.thumbnailPublicId });
+      success('Video deleted');
       // Navigate away after delete
       navigate('/videos');
     } catch (err) {
       console.error(err);
       setDeleteError(err?.message || 'Delete failed');
+      error(err?.message || 'Delete failed');
     } finally {
       setDeleting(false);
     }

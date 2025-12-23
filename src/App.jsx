@@ -92,12 +92,16 @@ function AppWrapper() {
   );
 }
 
+import { ToastProvider } from './contexts/ToastContext';
+
 export default function App() {
   return (
     <Router>
-      <AppWrapper />
+      <ToastProvider>
+        <AppWrapper />
+      </ToastProvider>
     </Router>
   );
-}
+} 
 
 

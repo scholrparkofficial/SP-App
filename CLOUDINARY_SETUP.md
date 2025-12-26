@@ -27,7 +27,7 @@ Follow these steps to enable video uploads to Cloudinary from the frontend:
    - Vite reads `.env` on start, so restart `npm run dev` / `yarn dev` after adding env vars.
 
 6) Optional: Adjust client file size limits and validation
-   - `src/components/UploadVideo.jsx` implements a 50 MB sample limit. Change `MAX_BYTES` if you want to allow larger uploads (Cloudinary free tier may have limits).
+   - `src/components/UploadVideo.jsx` previously implemented a 50 MB sample limit; the client-side check has been removed. Adjust server/Cloudinary settings if you need to enforce a different limit (Cloudinary free tier may have limits).
 
 7) Verify
    - Open `/upload`, select a video and upload. The video will be uploaded to Cloudinary (progress shown) and a metadata record will be created in Firestore `videos` collection with `videoUrl`, `videoPublicId`, `thumbnailUrl` and `thumbnailPublicId`.

@@ -84,11 +84,6 @@ export default function UploadVideo() {
       return;
     }
     // Client-side validation
-    const MAX_BYTES = 50 * 1024 * 1024; // 50 MB default for free-tier safety
-    if (file.size > MAX_BYTES) {
-      setError('File is too large. Max 50 MB allowed on this plan.');
-      return;
-    }
     if (!file.type.startsWith('video/')) {
       setError('Please select a valid video file (mp4, webm, etc).');
       return;

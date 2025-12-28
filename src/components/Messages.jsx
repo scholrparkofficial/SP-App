@@ -21,6 +21,7 @@ import {
   markGroupMessageAsRead,
   deleteGroupMessageForMe,
   deleteGroupMessageForEveryone,
+  getConversationDetails,
   db
 } from "../firebase";
 import { onSnapshot, query, orderBy } from "firebase/firestore";
@@ -759,7 +760,7 @@ export default function Messages({ isOpen, onClose }) {
                     <div
                       key={conv.id}
                       className="flex items-center gap-2 p-2 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700"
-                      onClick={() => openPrivateChat({ id: conv.id, otherUser: otherUser || { uid: otherUserId } })}
+                      onClick={() => openPrivateChat(conv)}
                     >
                       <img
                         src={otherUser?.photoURL || "/avatar.png"}
@@ -802,11 +803,46 @@ export default function Messages({ isOpen, onClose }) {
                       try {
                         if (chatType === "group") {
                           if (!msg.read || !msg.read.includes(user.uid)) {
-                            markGroupMessageAsRead(selectedChat.id, msg.id, user.uid);
+                            // Debug logs to verify user/conversation/message state before write
+                            try {
+                              console.log('DBG markGroupMessageAsRead -> currentUser uid:', user?.uid);
+                              console.log('DBG markGroupMessageAsRead -> conversation id:', selectedChat?.id, 'participants:', selectedChat?.participants);
+                              console.log('DBG markGroupMessageAsRead -> message id:', msg.id, 'current read:', msg.read);
+                            } catch (e) {
+                              // ignore
+                            }
+
+                            // markGroupMessageAsRead returns a promise; catch rejections to avoid uncaught promise
+                            markGroupMessageAsRead(selectedChat.id, msg.id, user.uid).catch((err) => {
+                              console.error('markGroupMessageAsRead failed:', err);
+                            });
                           }
                         } else {
                           if (msg.readBy && !msg.readBy.includes(user.uid)) {
-                            markMessageAsRead(selectedChat.id, msg.id, user.uid);
+                            // Debug logs to verify user/conversation/message state before write
+                            try {
+                              console.log('DBG markMessageAsRead -> currentUser uid:', user?.uid);
+                              console.log('DBG markMessageAsRead -> conversation id:', selectedChat?.id, 'participants:', selectedChat?.participants);
+                              console.log('DBG markMessageAsRead -> message id:', msg.id, 'current readBy:', msg.readBy);
+                            } catch (e) {
+                              // ignore
+                            }
+
+                            // Fetch server-side conversation doc and log participants for debugging
+                            try {
+                              getConversationDetails(selectedChat.id)
+                                .then((convDoc) => {
+                                  console.log('DBG server conversation doc participants:', convDoc?.participants);
+                                })
+                                .catch((err) => console.error('DBG getConversationDetails failed:', err));
+                            } catch (e) {
+                              // ignore
+                            }
+
+                            // markMessageAsRead returns a promise; catch rejections to avoid uncaught promise
+                            markMessageAsRead(selectedChat.id, msg.id, user.uid).catch((err) => {
+                              console.error('markMessageAsRead failed:', err);
+                            });
                           }
                         }
                       } catch (err) {

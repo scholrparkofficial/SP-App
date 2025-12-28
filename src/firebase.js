@@ -360,6 +360,14 @@ export const getConversationMessages = (conversationId) => {
   return q;
 };
 
+export const getConversationDetails = async (conversationId) => {
+  const { doc, getDoc } = await import('firebase/firestore');
+  const docRef = doc(db, 'conversations', conversationId);
+  const snap = await getDoc(docRef);
+  if (!snap.exists()) return null;
+  return { id: snap.id, ...snap.data() };
+};
+
 export const createConversation = async (participantIds) => {
   const { collection, addDoc, doc, setDoc } = await import("firebase/firestore");
   const conversationRef = doc(collection(db, "conversations"));

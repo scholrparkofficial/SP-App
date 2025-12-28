@@ -368,6 +368,45 @@ export const getConversationDetails = async (conversationId) => {
   return { id: snap.id, ...snap.data() };
 };
 
+// Video comments and likes
+export const addComment = async (videoId, { userId, displayName, photoURL, text } = {}) => {
+  const { collection, addDoc, serverTimestamp } = await import('firebase/firestore');
+  if (!videoId || !userId || !text) throw new Error('videoId, userId and text are required');
+  const commentsRef = collection(db, 'videos', videoId, 'comments');
+  const docRef = await addDoc(commentsRef, {
+    userId,
+    displayName: displayName || null,
+    photoURL: photoURL || null,
+    text,
+    timestamp: serverTimestamp(),
+  });
+  return docRef.id;
+};
+
+export const getComments = (videoId) => {
+  const commentsRef = collection(db, 'videos', videoId, 'comments');
+  const q = query(commentsRef, orderBy('timestamp', 'asc'));
+  return q;
+};
+
+export const likeVideo = async (videoId, userId) => {
+  const { doc, updateDoc, arrayUnion, increment } = await import('firebase/firestore');
+  const videoRef = doc(db, 'videos', videoId);
+  await updateDoc(videoRef, {
+    likes: arrayUnion(userId),
+    likesCount: increment(1),
+  });
+};
+
+export const unlikeVideo = async (videoId, userId) => {
+  const { doc, updateDoc, arrayRemove, increment } = await import('firebase/firestore');
+  const videoRef = doc(db, 'videos', videoId);
+  await updateDoc(videoRef, {
+    likes: arrayRemove(userId),
+    likesCount: increment(-1),
+  });
+};
+
 export const createConversation = async (participantIds) => {
   const { collection, addDoc, doc, setDoc } = await import("firebase/firestore");
   const conversationRef = doc(collection(db, "conversations"));

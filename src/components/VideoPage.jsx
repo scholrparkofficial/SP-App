@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ThumbsUp, Share2, UserPlus } from "lucide-react";
-import { getVideoById, getVideos, deleteVideo } from "../firebase";
+import { getVideoById, getVideos, deleteVideo, likeVideo, unlikeVideo } from "../firebase";
 import { useAuth } from "../contexts/AuthContext";
 import { useToast } from '../contexts/ToastContext';
+import Comments from './Comments';
 
 export default function VideoPage() {
   const { videoId } = useParams();
@@ -28,8 +29,16 @@ export default function VideoPage() {
         if (!mounted) return;
         setVideo(v);
         setSuggested(list.filter(i => i.id !== videoId));
-        setLikes((v?.likes) || 0);
+        // likesCount may be stored as likesCount or derived
+        const count = v?.likesCount ?? (Array.isArray(v?.likes) ? v.likes.length : 0);
+        setLikes(count || 0);
         setFollowers((v?.followers) || 0);
+        // determine if current user already liked
+        if (user && Array.isArray(v?.likes)) {
+          setLiked(v.likes.includes(user.uid));
+        } else {
+          setLiked(false);
+        }
       } catch (err) {
         console.error(err);
         if (mounted) setLoadError(err?.message || String(err));
@@ -60,6 +69,9 @@ export default function VideoPage() {
       setDeleting(false);
     }
   };
+
+  const [liked, setLiked] = useState(false);
+  const [commenting, setCommenting] = useState(false);
 
   const handleShare = () => {
     const shareData = {
@@ -100,8 +112,27 @@ export default function VideoPage() {
             {/* Action Buttons with Counters */}
             <div className="flex gap-4 mt-4 items-center">
               <button
-                className="flex items-center gap-2 px-4 py-2 btn-primary rounded-lg"
-                onClick={() => setLikes(likes + 1)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg ${liked ? 'bg-blue-600 text-white' : 'btn-primary'}`}
+                onClick={async () => {
+                  if (!user) { alert('Please sign in to like'); return; }
+                  try {
+                    if (liked) {
+                      setLiked(false);
+                      setLikes((c) => Math.max(0, c - 1));
+                      await unlikeVideo(video.id, user.uid);
+                    } else {
+                      setLiked(true);
+                      setLikes((c) => c + 1);
+                      await likeVideo(video.id, user.uid);
+                    }
+                  } catch (err) {
+                    console.error('Like action failed', err);
+                    // revert optimistic update
+                    setLiked((s) => !s);
+                    setLikes((c) => (liked ? c + 1 : Math.max(0, c - 1)));
+                    alert('Failed to update like');
+                  }
+                }}
               >
                 <ThumbsUp size={18} /> Like ({likes})
               </button>
@@ -136,7 +167,7 @@ export default function VideoPage() {
           {/* Comments placeholder */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md mt-4">
             <h2 className="text-xl font-semibold mb-2 text-gray-800 dark:text-gray-100">Comments</h2>
-            <p className="text-gray-500 dark:text-gray-400">User comments will appear here...</p>
+            <Comments videoId={video.id} />
           </div>
         </div>
 

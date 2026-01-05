@@ -73,34 +73,29 @@ export default function UploadVideo() {
 
   const handleUpload = async (e) => {
     e.preventDefault();
-    setError('');
-    if (!user) {
-      setError('You must be signed in to upload.');
-      toast.error('You must be signed in to upload.');
+    if (!file || !title || !description) {
+      setError('Please fill in all fields and select a file.');
       return;
     }
-    if (!file) {
-      setError('Please select a video file.');
-      return;
-    }
-    // Client-side validation
-    if (!file.type.startsWith('video/')) {
-      setError('Please select a valid video file (mp4, webm, etc).');
-      return;
-    }
+
     setUploading(true);
+    setError('');
     try {
-      const thumb = await generateThumbnail(file);
-      if (thumb) {
-        const url = URL.createObjectURL(thumb);
-        setThumbPreview(url);
-      }
-  // uploadVideoFile now returns { promise, cancel }
-  const { promise, cancel } = uploadVideoFile({ file, title, description, uploaderId: user.uid, thumbnailBlob: thumb, onProgress: (p) => setProgress(p) });
-  if (cancel) setCancelUploadFn(() => cancel);
-  const res = await promise;
-  // navigate to videos feed or the video page
-  navigate(`/video/${res.id}`);
+        const tempAccountEmail = 'scholrpark.official@gmail.com';
+        // generate thumbnail blob (best-effort)
+        let thumb = null;
+        try {
+          thumb = await generateThumbnail(file);
+          if (thumb) setThumbPreview(URL.createObjectURL(thumb));
+        } catch (e) {
+          // ignore thumbnail errors
+        }
+        // uploadVideoFile now returns { promise, cancel }
+        const { promise, cancel } = uploadVideoFile({ file, title, description, uploaderId: user.uid, thumbnailBlob: thumb, onProgress: (p) => setProgress(p), status: 'pending', reviewer: tempAccountEmail });
+      if (cancel) setCancelUploadFn(() => cancel);
+      const res = await promise;
+      // navigate to videos feed or the video page
+      navigate(`/video/${res.id}`);
     } catch (err) {
       console.error(err);
       setServerError(err);
@@ -179,9 +174,13 @@ export default function UploadVideo() {
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <Tooltip text={uploading ? `Uploading ${progress}%` : 'Upload'}>
-            <button disabled={uploading} className="flex-1 px-4 py-3 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">
-              {uploading ? `Uploading ${progress}%` : 'Upload'}
-            </button>
+            <button
+  onClick={handleUpload}
+  disabled={uploading || !file || !title || !description}
+  className="btn btn-primary"
+>
+  {uploading ? `Uploading (${progress}%)` : 'Upload Video'}
+</button>
           </Tooltip>
 
           <Tooltip text="Back to videos">

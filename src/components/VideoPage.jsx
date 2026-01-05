@@ -1,23 +1,37 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ThumbsUp, Share2, UserPlus } from "lucide-react";
-import { getVideoById, getVideos, deleteVideo, likeVideo, unlikeVideo } from "../firebase";
+import { ThumbsUp, Share2, UserPlus, ShieldCheck } from "lucide-react";
+import {
+  getVideoById,
+  getVideos,
+  deleteVideo,
+  likeVideo,
+  unlikeVideo,
+  followChannel,
+  updateVideoStatus
+} from "../firebase";
+import { getFollowersForChannels } from "../firebase";
 import { useAuth } from "../contexts/AuthContext";
-import { useToast } from '../contexts/ToastContext';
-import Comments from './Comments';
+import { useToast } from "../contexts/ToastContext";
+import Comments from "./Comments";
 
 export default function VideoPage() {
   const { videoId } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { success, error } = useToast();
+
   const [video, setVideo] = useState(null);
   const [suggested, setSuggested] = useState([]);
   const [loading, setLoading] = useState(true);
   const [likes, setLikes] = useState(0);
   const [followers, setFollowers] = useState(0);
+  const [liked, setLiked] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState(null);
   const [loadError, setLoadError] = useState(null);
-  const { user } = useAuth();
+
+  const isUploader = user && user.uid === video?.uploaderId;
+  const isAdmin = user && user.email === "scholrpark.official@gmail.com";
 
   useEffect(() => {
     let mounted = true;
@@ -27,174 +41,246 @@ export default function VideoPage() {
         const v = await getVideoById(videoId);
         const list = await getVideos();
         if (!mounted) return;
+
         setVideo(v);
         setSuggested(list.filter(i => i.id !== videoId));
-        // likesCount may be stored as likesCount or derived
-        const count = v?.likesCount ?? (Array.isArray(v?.likes) ? v.likes.length : 0);
-        setLikes(count || 0);
-        setFollowers((v?.followers) || 0);
-        // determine if current user already liked
+
+        const likeCount =
+          v?.likesCount ?? (Array.isArray(v?.likes) ? v.likes.length : 0);
+        setLikes(likeCount);
+        // prefer video-level followersCount if present, otherwise fetch from followers collection
+        if (typeof v?.followersCount === "number" && v.followersCount >= 0) {
+          setFollowers(v.followersCount);
+        } else {
+          try {
+            const followersMap = await getFollowersForChannels();
+            setFollowers(followersMap[v.uploaderId] || 0);
+          } catch (e) {
+            console.error("Failed to load followers mapping", e);
+            setFollowers(0);
+          }
+        }
+
         if (user && Array.isArray(v?.likes)) {
           setLiked(v.likes.includes(user.uid));
-        } else {
-          setLiked(false);
         }
       } catch (err) {
         console.error(err);
-        if (mounted) setLoadError(err?.message || String(err));
+        setLoadError(err?.message || "Failed to load video");
       } finally {
-        if (mounted) setLoading(false);
+        setLoading(false);
       }
     })();
     return () => (mounted = false);
-  }, [videoId]);
-
-  const { success, error, info } = useToast();
+  }, [videoId, user]);
 
   const handleDelete = async () => {
-    if (!video) return;
-    if (!confirm('Are you sure you want to delete this video? This action cannot be undone.')) return;
-    setDeleting(true);
-    setDeleteError(null);
+    if (!confirm("Are you sure you want to delete this video?")) return;
     try {
-      await deleteVideo({ id: video.id, videoPublicId: video.videoPublicId, thumbnailPublicId: video.thumbnailPublicId });
-      success('Video deleted');
-      // Navigate away after delete
-      navigate('/videos');
+      setDeleting(true);
+      await deleteVideo({
+        id: video.id,
+        videoPublicId: video.videoPublicId,
+        thumbnailPublicId: video.thumbnailPublicId
+      });
+      success("Video deleted");
+      navigate("/videos");
     } catch (err) {
       console.error(err);
-      setDeleteError(err?.message || 'Delete failed');
-      error(err?.message || 'Delete failed');
+      error("Delete failed");
     } finally {
       setDeleting(false);
     }
   };
 
-  const [liked, setLiked] = useState(false);
-  const [commenting, setCommenting] = useState(false);
-
-  const handleShare = () => {
-    const shareData = {
-      title: video?.title,
-      text: video?.description,
-      url: window.location.href,
-    };
-    if (navigator.share) {
-      navigator.share(shareData).catch(err => console.log(err));
-    } else {
-      navigator.clipboard.writeText(window.location.href);
-      alert("Link copied to clipboard!");
+  const handleLike = async () => {
+    if (!user) return alert("Sign in to like");
+    try {
+      if (liked) {
+        setLiked(false);
+        setLikes(l => Math.max(0, l - 1));
+        await unlikeVideo(video.id, user.uid);
+      } else {
+        setLiked(true);
+        setLikes(l => l + 1);
+        await likeVideo(video.id, user.uid);
+      }
+    } catch (err) {
+      console.error(err);
+      setLiked(v => !v);
+      error("Failed to update like");
     }
   };
 
-  if (loading) return <div className="p-6">Loading...</div>;
-  if (loadError) return <div className="p-6 text-red-500">Error loading video: {loadError}</div>;
+  const handleFollow = async () => {
+    if (!user) return alert("Sign in to follow");
+    try {
+      const res = await followChannel(video.uploaderId, user.uid);
+      if (res?.success) {
+        setFollowers(f => f + 1);
+        success("Following channel");
+      } else {
+        error(res?.error || "Follow failed");
+      }
+    } catch (err) {
+      console.error(err);
+      error("Follow failed");
+    }
+  };
+
+  const handleShare = () => {
+    if (navigator.share) {
+      navigator.share({
+        title: video.title,
+        text: video.description,
+        url: window.location.href
+      });
+    } else {
+      navigator.clipboard.writeText(window.location.href);
+      alert("Link copied");
+    }
+  };
+
+  if (loading) return <div className="p-6">Loading…</div>;
+  if (loadError) return <div className="p-6 text-red-500">{loadError}</div>;
   if (!video) return <div className="p-6">Video not found</div>;
 
   return (
     <div className="bg-gray-50 dark:bg-gray-900 min-h-screen">
-      <div className="max-w-7xl mx-auto p-6 flex flex-col lg:flex-row gap-8">
-        {/* Main Video Area */}
-        <div className="flex-1 flex flex-col gap-4">
-          {video.videoUrl ? (
-            <div className="rounded-2xl shadow-lg overflow-hidden bg-black">
-              <video className="w-full" controls src={video.videoUrl} />
-            </div>
-          ) : (
-            <div className="rounded-2xl shadow-lg p-8 bg-gray-200 text-center">No playable video URL</div>
-          )}
+      <div className="max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-          {/* Video Info */}
-          <div className="flex flex-col gap-3 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md">
-            <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">{video.title}</h1>
-            <p className="text-gray-600 dark:text-gray-300">{video.description}</p>
+        {/* LEFT SIDE */}
+        <div className="lg:col-span-8 flex flex-col gap-4">
 
-            {/* Action Buttons with Counters */}
-            <div className="flex gap-4 mt-4 items-center">
-              <button
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg ${liked ? 'bg-blue-600 text-white' : 'btn-primary'}`}
-                onClick={async () => {
-                  if (!user) { alert('Please sign in to like'); return; }
-                  try {
-                    if (liked) {
-                      setLiked(false);
-                      setLikes((c) => Math.max(0, c - 1));
-                      await unlikeVideo(video.id, user.uid);
-                    } else {
-                      setLiked(true);
-                      setLikes((c) => c + 1);
-                      await likeVideo(video.id, user.uid);
-                    }
-                  } catch (err) {
-                    console.error('Like action failed', err);
-                    // revert optimistic update
-                    setLiked((s) => !s);
-                    setLikes((c) => (liked ? c + 1 : Math.max(0, c - 1)));
-                    alert('Failed to update like');
-                  }
-                }}
-              >
-                <ThumbsUp size={18} /> Like ({likes})
-              </button>
-
-              {/* Delete button - only show if uploader */}
-              {user && user.uid === video.uploaderId && (
-                <button
-                  disabled={deleting}
-                  className="flex items-center gap-2 px-4 py-2 btn-danger ml-auto"
-                  onClick={handleDelete}
-                >
-                  {deleting ? 'Deleting...' : 'Delete Video'}
-                </button>
-              )}
-
-              <button
-                className="flex items-center gap-2 px-4 py-2 btn-success rounded-lg"
-                onClick={handleShare}
-              >
-                <Share2 size={18} /> Share
-              </button>
-
-              <button
-                className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg"
-                onClick={() => setFollowers(followers + 1)}
-              >
-                <UserPlus size={18} /> Follow Channel ({followers})
-              </button>
-            </div>
+          {/* Video Player */}
+          <div className="bg-black rounded-xl overflow-hidden">
+            <video
+              className="w-full max-h-[70vh] object-contain"
+              controls
+              src={video.videoUrl}
+            />
           </div>
 
-          {/* Comments placeholder */}
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md mt-4">
-            <h2 className="text-xl font-semibold mb-2 text-gray-800 dark:text-gray-100">Comments</h2>
+          {/* Title */}
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            {video.title}
+          </h1>
+
+          {/* ACTION BAR */}
+          <div className="flex flex-wrap items-center gap-3">
+
+            <button
+              onClick={handleLike}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
+                liked ? "bg-blue-600 text-white" : "bg-gray-200 dark:bg-gray-700"
+              }`}
+            >
+              <ThumbsUp size={18} /> {likes}
+            </button>
+
+            {user && !isUploader && (
+              <button
+                onClick={handleFollow}
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg"
+              >
+                <UserPlus size={18} /> {followers}
+              </button>
+            )}
+
+            <button
+              onClick={handleShare}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-lg"
+            >
+              <Share2 size={18} /> Share
+            </button>
+
+            {/* UPLOADER CONTROLS */}
+            {isUploader && (
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="ml-auto px-4 py-2 bg-red-600 text-white rounded-lg"
+              >
+                Delete
+              </button>
+            )}
+
+            {/* ADMIN CONTROLS */}
+            {isAdmin && (
+              <div className="ml-auto flex items-center gap-2 border-l pl-4">
+                {video.status !== "public" && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        const res = await updateVideoStatus(video.id, "public");
+                        if (res?.success) {
+                          setVideo(v => ({ ...v, status: "public" }));
+                          success("Video approved");
+                        } else {
+                          error("Approval failed");
+                        }
+                      } catch {
+                        error("Approval failed");
+                      }
+                    }}
+                    className="flex items-center gap-1 px-3 py-2 bg-green-600 text-white rounded-lg"
+                  >
+                    <ShieldCheck size={16} /> Approve
+                  </button>
+                )}
+
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="px-3 py-2 bg-red-700 text-white rounded-lg"
+                >
+                  Force Delete
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Description */}
+          <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+            {video.description}
+          </p>
+
+          {/* Comments */}
+          <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow">
+            <h2 className="text-xl font-semibold mb-3">Comments</h2>
             <Comments videoId={video.id} />
           </div>
         </div>
 
-        {/* Suggested Videos Sidebar */}
-        <div
-          className="w-full lg:w-96 flex flex-col gap-4 bg-gray-100 dark:bg-gray-800 p-4 rounded-2xl"
-          style={{ maxHeight: "80vh", overflowY: "auto" }}
-        >
-          <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-2">Suggested Videos</h2>
+        {/* RIGHT SIDE */}
+        <div className="lg:col-span-4 flex flex-col gap-3 max-h-[80vh] overflow-y-auto">
+          <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100">
+            Suggested Videos
+          </h2>
+
           {suggested.map(v => (
             <div
               key={v.id}
-              className="flex gap-3 cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-2 rounded-lg shadow-sm transition-all duration-200"
               onClick={() => navigate(`/video/${v.id}`)}
+              className="flex gap-3 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-2 rounded-lg"
             >
               <img
-                src={v.thumbnailUrl || '/video-placeholder.png'}
+                src={v.thumbnailUrl || "/video-placeholder.png"}
                 alt={v.title}
                 className="w-32 h-20 object-cover rounded-lg"
               />
-              <div className="flex flex-col justify-center">
-                <p className="font-semibold text-gray-800 dark:text-gray-100">{v.title}</p>
-                <p className="text-gray-500 dark:text-gray-400 text-sm">{(v.description || '').slice(0, 60)}...</p>
+              <div>
+                <p className="font-semibold text-sm text-gray-900 dark:text-gray-100">
+                  {v.title}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {(v.description || "").slice(0, 60)}…
+                </p>
               </div>
             </div>
           ))}
         </div>
+
       </div>
     </div>
   );

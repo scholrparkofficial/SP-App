@@ -1,12 +1,22 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { X } from "lucide-react";
+import { getNotifications } from "../firebase";
 
 export default function NotificationsPanel({ isOpen, onClose }) {
-  const notifications = [
-    "Assignment 1 due tomorrow",
-    "New batch added: Physics Essentials",
-    "AI Chatbot updated",
-  ];
+  const [notifications, setNotifications] = useState([]);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const fetchedNotifications = await getNotifications(); // Fetch notifications from backend
+        if (mounted) setNotifications(fetchedNotifications);
+      } catch (err) {
+        console.error("Failed to fetch notifications", err);
+      }
+    })();
+    return () => (mounted = false);
+  }, []);
 
   return (
     <div
@@ -22,14 +32,18 @@ export default function NotificationsPanel({ isOpen, onClose }) {
       </div>
 
       <div className="p-4 flex flex-col gap-3">
-        {notifications.map((note, index) => (
-          <div
-            key={index}
-            className="p-2 bg-gray-100 rounded-md shadow-sm hover:bg-gray-200 transition"
-          >
-            {note}
-          </div>
-        ))}
+        {notifications.length > 0 ? (
+          notifications.map((note, index) => (
+            <div
+              key={index}
+              className="p-2 bg-gray-100 rounded-md shadow-sm hover:bg-gray-200 transition"
+            >
+              {note}
+            </div>
+          ))
+        ) : (
+          <p className="text-gray-500">No new notifications</p>
+        )}
       </div>
     </div>
   );

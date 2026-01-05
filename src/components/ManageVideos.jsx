@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { getVideosByUploader, deleteVideo } from '../firebase';
+import { getVideosByUploader, deleteVideo, updateVideoStatus, getVideos } from '../firebase';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../contexts/ToastContext';
 
@@ -20,12 +20,18 @@ export default function ManageVideos() {
     (async () => {
       try {
         setLoading(true);
-        const res = await getVideosByUploader(user.uid);
+        let list = [];
+        if (user.email === 'scholrpark.official@gmail.com') {
+          // admin: fetch all videos for moderation
+          list = await getVideos();
+        } else {
+          const res = await getVideosByUploader(user.uid);
+          list = (res && res.data) ? res.data : (res || []);
+          if (res && res.indexRequired) setIndexRequired(true);
+          if (res && res.originalError) console.warn('Index fallback used:', res.originalError);
+        }
         if (!mounted) return;
-        const list = (res && res.data) ? res.data : (res || []);
         setVideos(list);
-        if (res && res.indexRequired) setIndexRequired(true);
-        if (res && res.originalError) console.warn('Index fallback used:', res.originalError);
       } catch (err) {
         console.error(err);
         if (mounted) setError(err?.message || String(err));
@@ -35,6 +41,22 @@ export default function ManageVideos() {
     })();
     return () => (mounted = false);
   }, [user]);
+
+  const handleApprove = async (video) => {
+    if (!video) return;
+    try {
+      const result = await updateVideoStatus(video.id, 'public'); // Update video status to public
+      if (result.success) {
+        toast.success('Video approved and made public.');
+        setVideos(videos.filter(v => v.id !== video.id));
+      } else {
+        toast.error(result.error || 'Failed to approve video.');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('An error occurred while approving the video.');
+    }
+  };
 
   const handleDelete = async (v) => {
     if (!v) return;
@@ -46,7 +68,12 @@ export default function ManageVideos() {
       toast.success('Video deleted');
     } catch (err) {
       console.error(err);
-      toast.error('Delete failed: ' + (err?.message || String(err)));
+      const msg = err?.message || String(err);
+      if (/permission/i.test(msg)) {
+        toast.error('Insufficient permissions to delete — please update Firestore rules for admin deletion.');
+      } else {
+        toast.error('Delete failed: ' + msg);
+      }
     } finally {
       setDeletingId(null);
     }
@@ -96,6 +123,9 @@ export default function ManageVideos() {
                     <button onClick={() => navigate(`/video/${v.id}`)} className="px-3 py-1 bg-blue-600 text-white rounded">Open</button>
                     <button disabled={deletingId === v.id} onClick={() => handleDelete(v)} className="px-3 py-1 bg-red-500 text-white rounded">
                       {deletingId === v.id ? 'Deleting...' : 'Delete'}
+                    </button>
+                    <button onClick={() => handleApprove(v)} className="px-3 py-1 bg-green-600 text-white rounded">
+                      Approve
                     </button>
                   </div>
                 </div>

@@ -20,6 +20,7 @@ import Messages from "./Messages";
 import NotificationsPanel from "./NotificationsPanel";
 import LoginModal from "./LoginModal";
 import { useAuth } from "../contexts/AuthContext";
+import { getNewMessages, getNewNotifications } from '../firebase';
 
 export default function Navbar() {
   const [isMessagesOpen, setIsMessagesOpen] = useState(false);
@@ -29,6 +30,8 @@ export default function Navbar() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [hasNewMessages, setHasNewMessages] = useState(false);
+  const [hasNewNotifications, setHasNewNotifications] = useState(false);
 
   const navigate = useNavigate();
   const { user, googleLogin, logout } = useAuth();
@@ -38,6 +41,20 @@ export default function Navbar() {
     setDarkMode(savedDarkMode);
     document.documentElement.classList.toggle("dark", savedDarkMode);
   }, []);
+
+  useEffect(() => {
+    const checkUpdates = async () => {
+      try {
+        const messages = await getNewMessages(user?.uid); // Fetch new messages for current user
+        const notifications = await getNewNotifications(user?.uid); // Fetch new notifications for current user
+        setHasNewMessages(messages.length > 0);
+        setHasNewNotifications(notifications.length > 0);
+      } catch (err) {
+        console.error("Failed to fetch updates", err);
+      }
+    };
+    checkUpdates();
+  }, [user]);
 
   const toggleDarkMode = () => {
     const next = !darkMode;
@@ -84,7 +101,11 @@ export default function Navbar() {
               <span className="whitespace-nowrap">Videos</span>
             </Link>
 
-            <Link to="/private-batches" className="hidden md:flex nav-item" title="Private Batches">
+            <Link
+              to="/private-batches"
+              className="hidden md:flex nav-item"
+              title="Private Batches"
+            >
               <BookOpen size={20} />
               <span className="whitespace-nowrap">Private Batches</span>
             </Link>
@@ -105,10 +126,11 @@ export default function Navbar() {
             >
               <MessageCircle size={20} />
               <span className="whitespace-nowrap">Messages</span>
-              {/* example small badge */}
-              <span className="absolute -top-0.5 -right-0.5">
-                <span className="badge-dot" />
-              </span>
+              {hasNewMessages && (
+                <span className="absolute -top-0.5 -right-0.5">
+                  <span className="badge-dot" />
+                </span>
+              )}
             </button>
 
             <button
@@ -122,9 +144,11 @@ export default function Navbar() {
             >
               <Bell size={20} />
               <span className="whitespace-nowrap">Notifications</span>
-              <span className="absolute -top-0.5 -right-0.5">
-                <span className="badge-dot" />
-              </span>
+              {hasNewNotifications && (
+                <span className="absolute -top-0.5 -right-0.5">
+                  <span className="badge-dot" />
+                </span>
+              )}
             </button>
           </div>
 

@@ -2,6 +2,7 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
 import { getFirestore, collection, query, orderBy } from "firebase/firestore";
+
 // Firebase Storage removed: videos will be uploaded to Cloudinary instead
 
 const firebaseConfig = {
@@ -69,7 +70,7 @@ export const createUserDocument = async (user) => {
 };
 
 // Video helpers: upload to Cloudinary and store metadata in Firestore
-export const uploadVideoFile = ({ file, title, description, uploaderId, thumbnailBlob, onProgress } = {}) => {
+export const uploadVideoFile = ({ file, title, description, uploaderId, thumbnailBlob, onProgress, status, reviewer } = {}) => {
   // Returns { promise, cancel }
   // promise resolves to { id, videoUrl, thumbnailUrl }
   const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
@@ -162,6 +163,8 @@ export const uploadVideoFile = ({ file, title, description, uploaderId, thumbnai
       videoPublicId,
       thumbnailUrl,
       thumbnailPublicId,
+      status: status || 'pending',
+      reviewer: reviewer || null,
       createdAt: serverTimestamp(),
     });
 
@@ -574,4 +577,123 @@ export const deleteGroup = async (groupId) => {
   // Delete the group
   const groupRef = doc(db, "groups", groupId);
   await deleteDoc(groupRef);
+};
+
+export const getNotifications = async () => {
+  try {
+    const { collection, getDocs } = await import("firebase/firestore");
+    const notificationsRef = collection(db, "notifications");
+    const snapshot = await getDocs(notificationsRef);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    console.error("Error fetching notifications:", error);
+    return [];
+  }
+};
+
+export const getFollowersForChannels = async () => {
+  try {
+    const { collection, getDocs } = await import("firebase/firestore");
+    const followersRef = collection(db, "followers");
+    const snapshot = await getDocs(followersRef);
+    const followersData = {};
+    snapshot.docs.forEach(doc => {
+      const data = doc.data();
+      // Prefer explicit `count`, otherwise derive from `users` array if present
+      const count = (data && typeof data.count === 'number') ? data.count : (Array.isArray(data?.users) ? data.users.length : 0);
+      followersData[doc.id] = count;
+    });
+    return followersData;
+  } catch (error) {
+    console.error("Error fetching followers for channels:", error);
+    return {};
+  }
+};
+
+export const getLikesForVideos = async () => {
+  try {
+    const { collection, getDocs } = await import("firebase/firestore");
+    const likesRef = collection(db, "likes");
+    const snapshot = await getDocs(likesRef);
+    const likesData = {};
+    snapshot.docs.forEach(doc => {
+      const data = doc.data();
+      likesData[doc.id] = data.count || 0; // Assuming `count` field stores like count
+    });
+    return likesData;
+  } catch (error) {
+    console.error("Error fetching likes for videos:", error);
+    return {};
+  }
+};
+
+export const updateVideoStatus = async (videoId, status) => {
+  try {
+    const { doc, updateDoc, serverTimestamp } = await import('firebase/firestore');
+    const videoRef = doc(db, 'videos', videoId);
+    const payload = { status };
+    if (status === 'public') payload.publishedAt = serverTimestamp();
+    await updateDoc(videoRef, payload);
+    return { success: true };
+  } catch (err) {
+    console.error('Failed to update video status', err);
+    return { success: false, error: err?.message || String(err) };
+  }
+};
+
+export const followChannel = async (uploaderId, userId) => {
+  try {
+    if (!uploaderId || !userId) throw new Error('uploaderId and userId are required');
+    const { doc, getDoc, updateDoc, setDoc, increment, arrayUnion } = await import('firebase/firestore');
+    const followerRef = doc(db, 'followers', uploaderId);
+    const snap = await getDoc(followerRef);
+    if (!snap.exists()) {
+      await setDoc(followerRef, { users: [userId], count: 1 });
+      return { success: true };
+    }
+    const data = snap.data() || {};
+    const users = data.users || [];
+    if (users.includes(userId)) return { success: false, error: 'Already following' };
+    await updateDoc(followerRef, { users: arrayUnion(userId), count: increment(1) });
+    return { success: true };
+  } catch (err) {
+    console.error('Failed to follow channel', err);
+    return { success: false, error: err?.message || String(err) };
+  }
+};
+
+export const getNewNotifications = async (userId) => {
+  try {
+    if (!userId) return [];
+    const { collection, query, where, getDocs } = await import('firebase/firestore');
+    const notifRef = collection(db, 'notifications');
+    const q = query(notifRef, where('recipientId', '==', userId), where('read', '==', false));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (err) {
+    console.error('Failed to fetch new notifications', err);
+    return [];
+  }
+};
+
+export const getNewMessages = async (userId) => {
+  try {
+    if (!userId) return [];
+    // Minimal implementation: return conversations where lastMessageAt exists and lastMessageBy is not the user
+    const { collection, query, where, getDocs } = await import('firebase/firestore');
+    const convRef = collection(db, 'conversations');
+    const q = query(convRef, where('participants', 'array-contains', userId));
+    const snap = await getDocs(q);
+    const unread = [];
+    for (const docSnap of snap.docs) {
+      const data = docSnap.data() || {};
+      if (data.lastMessageAt && data.lastMessageBy && data.lastMessageBy !== userId) {
+        unread.push({ id: docSnap.id, ...data });
+      }
+    }
+    return unread;
+  } catch (err) {
+    console.error('Failed to fetch new messages', err);
+    return [];
+  }
 };

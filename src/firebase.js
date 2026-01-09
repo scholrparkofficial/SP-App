@@ -59,12 +59,17 @@ export const logoutUser = async () => {
 export const createUserDocument = async (user) => {
   const { doc, setDoc } = await import("firebase/firestore");
   const userRef = doc(db, "users", user.uid);
+  // Mark a user as admin if their email matches the configured admin email
+  const adminEmail = import.meta.env.VITE_ADMIN_EMAIL || 'scholrpark.official@gmail.com';
+  const isAdmin = Boolean(user.email && user.email.toLowerCase() === (adminEmail || '').toLowerCase());
+
   await setDoc(userRef, {
     uid: user.uid,
     email: user.email,
     displayName: user.displayName || user.email?.split("@")[0] || "User",
     photoURL: user.photoURL || "",
     createdAt: new Date(),
+    isAdmin,
   });
   return userRef;
 };
@@ -181,12 +186,44 @@ export const uploadVideoFile = ({ file, title, description, uploaderId, thumbnai
   return { promise: main, cancel };
 };
 
-export const getVideos = async (limitCount = 50) => {
-  const { collection, getDocs, query, orderBy } = await import('firebase/firestore');
+// Fetch public videos by default. Pass { includePrivate: true } to return all videos (admin use).
+export const getVideos = async (options = {}, limitCount = 50) => {
+  const { includePrivate } = options || {};
+  const { collection, getDocs, query, orderBy, where } = await import('firebase/firestore');
   const videosCol = collection(db, 'videos');
-  const q = query(videosCol, orderBy('createdAt', 'desc'));
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  // Try server-side filtered query first. If Firestore requires an index, fall back to client-side filtering.
+  try {
+    let q;
+    if (includePrivate) {
+      q = query(videosCol, orderBy('createdAt', 'desc'));
+    } else {
+      q = query(videosCol, where('status', '==', 'public'), orderBy('createdAt', 'desc'));
+    }
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (err) {
+    // Detect index-required error and fallback to client-side filtering/sorting
+    const msg = (err && err.message) || '';
+    if (/index/i.test(msg) || /requires/i.test(msg)) {
+      try {
+        const snapshot = await getDocs(query(videosCol));
+        const all = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const list = includePrivate ? all : all.filter(v => v.status === 'public');
+        // Sort by createdAt desc, handling Timestamps
+        list.sort((a, b) => {
+          const aTime = a.createdAt?.toMillis?.() || new Date(a.createdAt || 0).getTime() || 0;
+          const bTime = b.createdAt?.toMillis?.() || new Date(b.createdAt || 0).getTime() || 0;
+          return bTime - aTime;
+        });
+        return list;
+      } catch (e) {
+        // If fallback also fails, rethrow original error
+        console.error('getVideos fallback failed', e);
+        throw err;
+      }
+    }
+    throw err;
+  }
 };
 
 export const getVideoById = async (id) => {

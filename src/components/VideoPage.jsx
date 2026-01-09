@@ -145,6 +145,11 @@ export default function VideoPage() {
   if (loadError) return <div className="p-6 text-red-500">{loadError}</div>;
   if (!video) return <div className="p-6">Video not found</div>;
 
+  // Restrict access to non-public videos unless the user is the uploader or an admin
+  if (video.status && video.status !== 'public' && !isUploader && !isAdmin) {
+    return <div className="p-6">This video is pending approval and not available.</div>;
+  }
+
   return (
     <div className="bg-gray-50 dark:bg-gray-900 min-h-screen">
       <div className="max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6">

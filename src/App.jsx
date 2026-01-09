@@ -17,6 +17,7 @@ import YourNoteEditor from "./components/YourNoteEditor";
 import YourNotesLibrary from "./components/YourNotesLibrary";
 import AccountSettings from "./components/AccountSettings";
 import ManageVideos from "./components/ManageVideos";
+import AdminPanel from "./components/AdminPanel";
 
 
 function AppWrapper() {
@@ -72,6 +73,7 @@ function AppWrapper() {
         <Route path="/ai-chat" element={<AIChat />} />
         <Route path="/account" element={<AccountSettings />} />
         <Route path="/my-videos" element={<ManageVideos />} />
+        <Route path="/admin" element={<AdminPanel />} />
       </Routes>
 
       <LoginModal

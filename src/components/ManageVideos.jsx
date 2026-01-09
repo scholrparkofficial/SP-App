@@ -23,7 +23,7 @@ export default function ManageVideos() {
         let list = [];
         if (user.email === 'scholrpark.official@gmail.com') {
           // admin: fetch all videos for moderation
-          list = await getVideos();
+          list = await getVideos({ includePrivate: true });
         } else {
           const res = await getVideosByUploader(user.uid);
           list = (res && res.data) ? res.data : (res || []);

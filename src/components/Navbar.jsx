@@ -13,6 +13,7 @@ import {
   Settings,
   HelpCircle,
   Menu,
+  ShieldCheck,
   ChevronDown,
 } from "lucide-react";
 
@@ -284,6 +285,12 @@ export default function Navbar() {
                 >
                   <FileText size={16} /> My Videos
                 </button>
+
+                {user && user.email === (import.meta.env.VITE_ADMIN_EMAIL || 'scholrpark.official@gmail.com') && (
+                  <button onClick={() => { navigate('/admin'); setIsProfileOpen(false); }} className="panel-btn">
+                    <ShieldCheck size={16} /> Admin Panel
+                  </button>
+                )}
 
                 <button
                   onClick={() => setShowHelpModal(true)}

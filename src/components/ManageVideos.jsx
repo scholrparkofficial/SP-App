@@ -44,6 +44,12 @@ export default function ManageVideos() {
 
   const handleApprove = async (video) => {
     if (!video) return;
+    const adminEmail = import.meta.env.VITE_ADMIN_EMAIL || 'scholrpark.official@gmail.com';
+    if (!user || user.email !== adminEmail) {
+      toast.error('Only admin accounts can approve videos.');
+      return;
+    }
+
     try {
       const result = await updateVideoStatus(video.id, 'public'); // Update video status to public
       if (result.success) {
@@ -113,6 +119,16 @@ export default function ManageVideos() {
                   <h3 className="font-semibold text-gray-800 dark:text-gray-100">{v.title || 'Untitled'}</h3>
                   <p className="text-sm text-gray-500 dark:text-gray-300">{(v.description || '').slice(0, 100)}</p>
 
+                  {v.status && v.status !== 'public' && (
+                    <div className="mt-2 p-2 rounded bg-yellow-50 dark:bg-yellow-900 border border-yellow-200 dark:border-yellow-700 text-sm text-yellow-800 dark:text-yellow-100">
+                      {user && user.email === (import.meta.env.VITE_ADMIN_EMAIL || 'scholrpark.official@gmail.com') ? (
+                        <span>Pending moderation — this video is not yet public.</span>
+                      ) : (
+                        <span>Your video is pending admin approval and will be made public after verification.</span>
+                      )}
+                    </div>
+                  )}
+
                   <div className="flex items-center gap-3 mt-2 text-sm text-gray-600 dark:text-gray-300">
                     <div>Likes: <strong>{v.likes || 0}</strong></div>
                     <div>Views: <strong>{v.views || 0}</strong></div>
@@ -124,9 +140,11 @@ export default function ManageVideos() {
                     <button disabled={deletingId === v.id} onClick={() => handleDelete(v)} className="px-3 py-1 bg-red-500 text-white rounded">
                       {deletingId === v.id ? 'Deleting...' : 'Delete'}
                     </button>
-                    <button onClick={() => handleApprove(v)} className="px-3 py-1 bg-green-600 text-white rounded">
-                      Approve
-                    </button>
+                    {user && user.email === (import.meta.env.VITE_ADMIN_EMAIL || 'scholrpark.official@gmail.com') && (
+                      <button onClick={() => handleApprove(v)} className="px-3 py-1 bg-green-600 text-white rounded">
+                        Approve
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

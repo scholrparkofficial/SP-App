@@ -59,7 +59,9 @@ function AppWrapper() {
 
   return (
     <>
-      {shouldShowNavbar && <Navbar />}
+      <Navbar />
+      {/* spacer to prevent content being covered by fixed navbar */}
+      <div className="h-14 md:h-16" />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/private-batches" element={<PrivateBatches />} />

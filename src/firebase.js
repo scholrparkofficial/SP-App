@@ -273,32 +273,46 @@ export const incrementVideoView = async (id) => {
 // Delete video helper: delete Cloudinary resources via server, then delete Firestore document
 export const deleteVideo = async ({ id, videoPublicId, thumbnailPublicId } = {}) => {
   if (!id) throw new Error('id is required');
+  // Require a configured Cloudinary server endpoint for deletion.
+  const serverUrl = (import.meta.env.VITE_CLOUDINARY_SERVER_URL || '').trim();
+  if (!serverUrl) {
+    throw new Error('Cloudinary server delete endpoint not configured. Set VITE_CLOUDINARY_SERVER_URL to enable deletion of remote video files. Aborting to avoid orphaned metadata.');
+  }
 
-  // Call server to delete Cloudinary resources (if present)
-  const serverUrl = import.meta.env.VITE_CLOUDINARY_SERVER_URL || '';
+  const base = serverUrl.replace(/\/$/, '');
 
+  // Attempt to delete video resource first, then thumbnail. If any remote deletion fails, abort and do NOT delete Firestore metadata.
   try {
-    if (videoPublicId && serverUrl) {
-      await fetch(`${serverUrl.replace(/\/$/, '')}/api/cloudinary/delete`, {
+    if (videoPublicId) {
+      const resp = await fetch(`${base}/api/cloudinary/delete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ publicId: videoPublicId, resourceType: 'video' }),
       });
+      if (!resp.ok) {
+        const body = await resp.text();
+        throw new Error(`Cloudinary video delete failed: ${resp.status} ${body}`);
+      }
     }
-    if (thumbnailPublicId && serverUrl) {
-      await fetch(`${serverUrl.replace(/\/$/, '')}/api/cloudinary/delete`, {
+
+    if (thumbnailPublicId) {
+      const resp2 = await fetch(`${base}/api/cloudinary/delete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ publicId: thumbnailPublicId, resourceType: 'image' }),
       });
+      if (!resp2.ok) {
+        const body = await resp2.text();
+        throw new Error(`Cloudinary thumbnail delete failed: ${resp2.status} ${body}`);
+      }
     }
   } catch (err) {
-    // Log server errors but continue to attempt Firestore delete
     console.error('Error deleting Cloudinary resources', err);
+    // Do NOT delete Firestore document if remote deletion failed — surface error to caller so they can retry safely.
     throw err;
   }
 
-  // Delete Firestore document
+  // Delete Firestore document only after successful remote deletions
   const { doc, deleteDoc } = await import('firebase/firestore');
   const docRef = doc(db, 'videos', id);
   await deleteDoc(docRef);

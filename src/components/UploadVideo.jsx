@@ -94,6 +94,8 @@ export default function UploadVideo() {
         const { promise, cancel } = uploadVideoFile({ file, title, description, uploaderId: user.uid, thumbnailBlob: thumb, onProgress: (p) => setProgress(p), status: 'pending', reviewer: tempAccountEmail });
       if (cancel) setCancelUploadFn(() => cancel);
       const res = await promise;
+      // notify uploader that video is pending approval
+      try { toast.success('Upload complete — your video is pending admin approval and will be public after approval.'); } catch (e) {}
       // navigate to videos feed or the video page
       navigate(`/video/${res.id}`);
     } catch (err) {

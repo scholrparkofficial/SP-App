@@ -150,6 +150,9 @@ export default function VideoPage() {
     return <div className="p-6">This video is pending approval and not available.</div>;
   }
 
+  // If uploader is viewing their own pending video, show a notice about approval
+  const showUploaderPendingNotice = isUploader && video.status && video.status !== 'public';
+
   return (
     <div className="bg-gray-50 dark:bg-gray-900 min-h-screen">
       <div className="max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -170,6 +173,12 @@ export default function VideoPage() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
             {video.title}
           </h1>
+
+          {showUploaderPendingNotice && (
+            <div className="mt-2 p-3 rounded bg-yellow-50 dark:bg-yellow-900 border border-yellow-200 dark:border-yellow-700 text-sm text-yellow-800 dark:text-yellow-100">
+              Your video is pending admin approval. It will be made public after approval.
+            </div>
+          )}
 
           {/* ACTION BAR */}
           <div className="flex flex-wrap items-center gap-3">

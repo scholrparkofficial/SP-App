@@ -16,15 +16,34 @@ html, body, #root {
 @layer base {
   :root {
     --radius: 0.75rem;
+    /* Light theme tokens */
+    --bg: #f8fafc;
+    --surface: #ffffff;
+    --text: #0f172a;
+    --muted: #6b7280;
+    --border: #e6e7eb;
+    --primary: #2563eb;
+    --focus-ring: rgba(37,99,235,0.18);
+    --hover-surface: #f1f5f9;
+  }
+
+  .dark {
+    /* Sober dark tokens */
+    --bg: #0b1220;
+    --surface: #0f1724;
+    --text: #e6eef8;
+    --muted: #9ca3af;
+    --border: #273141;
+    --primary: #3b82f6;
+    --focus-ring: rgba(59,130,246,0.18);
+    --hover-surface: rgba(255,255,255,0.04);
   }
 
   /* Improve default focus style for accessibility */
-  *:focus {
-    outline: none;
-  }
+  *:focus { outline: none; }
   :focus-visible {
     outline: none;
-    box-shadow: 0 0 0 3px rgba(59,130,246,0.18); /* subtle blue focus ring */
+    box-shadow: 0 0 0 3px var(--focus-ring);
     border-radius: var(--radius);
   }
 }
@@ -39,11 +58,21 @@ html, body, #root {
   }
 
   .btn-primary {
-    @apply btn bg-primary-600 text-white hover:bg-primary-700 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary-300;
+    @apply btn;
+    background-color: var(--primary);
+    color: white;
+    border: 1px solid transparent;
+  }
+
+.btn-primary:hover { opacity: 0.95; }
+.btn-primary:focus-visible { box-shadow: 0 0 0 3px var(--focus-ring); }
   }
 
   .btn-secondary {
-    @apply btn bg-white border border-gray-200 text-gray-800 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100;
+    @apply btn;
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
   }
 
   .btn-danger {
@@ -56,33 +85,49 @@ html, body, #root {
 
   /* Navbar utilities */
   .nav-item {
-    @apply inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-primary-300;
+    @apply inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-150;
+    color: var(--text);
+    background: transparent;
   }
+
+.nav-item:hover { background-color: var(--hover-surface); }
 
   .nav-item svg {
     @apply opacity-90;
   }
 
   .panel-btn {
-    @apply flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150;
+    @apply flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm transition-colors duration-150;
+    color: var(--text);
+    background: transparent;
   }
 
+.panel-btn:hover { background-color: var(--hover-surface); }
+
   .badge-dot {
-    @apply inline-block w-2 h-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-gray-800;
+    @apply inline-block w-2 h-2 rounded-full bg-red-500 ring-2;
   }
 
   .card {
-    @apply bg-white dark:bg-gray-800 rounded-2xl shadow-card p-4;
+    background-color: var(--surface);
+    color: var(--text);
+    @apply rounded-2xl shadow-card p-4;
   }
 
   .input {
-    @apply w-full px-3 py-2 border rounded-md bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 focus-visible:ring-2 focus-visible:ring-primary-300;
+    @apply w-full px-3 py-2 border rounded-md;
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
   }
 
   .kbd {
-    @apply inline-block px-2 py-1 text-xs bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded border border-gray-200 dark:border-gray-700;
+    @apply inline-block px-2 py-1 text-xs rounded border;
+    background-color: var(--hover-surface);
+    color: var(--muted);
+    border: 1px solid var(--border);
   }
-}
+
 
 @layer utilities {
   .text-ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

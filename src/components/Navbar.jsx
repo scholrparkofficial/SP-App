@@ -21,6 +21,7 @@ import Messages from "./Messages";
 import NotificationsPanel from "./NotificationsPanel";
 import LoginModal from "./LoginModal";
 import FirstTimeHelpModal from "./FirstTimeHelpModal";
+import ProfileSlider from "./ProfileSlider";
 import { useAuth } from "../contexts/AuthContext";
 import { getNewMessages, getNewNotifications } from "../firebase";
 
@@ -177,6 +178,13 @@ export default function Navbar() {
       {/* ================= PANELS & MODALS ================= */}
       <Messages isOpen={isMessagesOpen} onClose={() => setIsMessagesOpen(false)} />
       <NotificationsPanel isOpen={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} />
+      <ProfileSlider
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
+        isLoggedIn={Boolean(user)}
+        handleLogin={() => setIsModalOpen(true)}
+        handleLogout={handleLogout}
+      />
       <LoginModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onGoogleLogin={handleGoogleLogin} />
       <FirstTimeHelpModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
     </div>

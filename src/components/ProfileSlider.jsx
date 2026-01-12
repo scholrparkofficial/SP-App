@@ -23,7 +23,7 @@ export default function ProfileSlider({ isOpen, onClose, isLoggedIn, handleLogin
           <>
             {/* Account Settings link */}
             <Link
-              to="/account-settings"
+              to="/account"
               className="px-4 py-2 text-center bg-blue-500 text-white rounded-md hover:bg-blue-600 transition"
               onClick={onClose}
             >

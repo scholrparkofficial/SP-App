@@ -133,4 +133,68 @@ html, body, #root {
   .text-ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 }
 
+/* sidebar / panel buttons */
+.sidebar-btn,
+.panel-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  width: 100%;
+  transition: background-color 0.2s ease;
+}
+
+/* light mode */
+.sidebar-btn,
+.panel-btn {
+  color: #1f2937; /* slate-800 */
+  background-color: #f8fafc; /* slate-50 */
+}
+.sidebar-btn:hover,
+.panel-btn:hover {
+  background-color: #e5f3ee; /* soft green */
+}
+
+/* dark mode */
+.dark .sidebar-btn,
+.dark .panel-btn {
+  color: #e5e7eb; /* slate-200 */
+  background-color: #1f2937; /* slate-800 */
+}
+.dark .sidebar-btn:hover,
+.dark .panel-btn:hover {
+  background-color: #334155; /* slate-700 */
+}
+
+/* nav links */
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #334155;
+}
+.dark .nav-link {
+  color: #e5e7eb;
+}
+.nav-link:hover {
+  color: #15803d; /* green-700 */
+}
+.dark .nav-link:hover {
+  color: #86efac; /* green-300 */
+}
+
+/* notification dot */
+.badge-dot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  background: #ef4444;
+  border-radius: 9999px;
+}
+
 

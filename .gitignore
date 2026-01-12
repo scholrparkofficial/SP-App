@@ -6,6 +6,7 @@ AGENTS.md
 
 # Local env files (cloudinary / firebase)
 .env*
+.env
 
 # server local env
 server/.env

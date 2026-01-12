@@ -33,7 +33,7 @@ export default function Videos() {
             try {
               const user = await getUserDetails(id);
               if (user) {
-                uploaderMap[id] = user.displayName || user.email || id;
+                uploaderMap[id] = user.displayName || user.email || 'Unknown';
               }
             } catch {
               /* ignore */
@@ -43,7 +43,7 @@ export default function Videos() {
 
         const enriched = res.map(v => ({
           ...v,
-          uploaderName: uploaderMap[v.uploaderId]
+          uploaderName: uploaderMap[v.uploaderId] || 'Unknown'
         }));
 
         if (mounted) setVideos(enriched);
@@ -58,7 +58,7 @@ export default function Videos() {
   }, []);
 
   // =========================
-  // Fetch likes + followers
+  // Fetch likes + followers (FIXED)
   // =========================
   useEffect(() => {
     if (!videos.length) return;
@@ -69,35 +69,37 @@ export default function Videos() {
       try {
         const rawFollowers = await getFollowersForChannels();
 
-        // ✅ Normalize followers → ALWAYS number
+        // Normalize followers → always number
         const normalizedFollowers = {};
         Object.entries(rawFollowers || {}).forEach(([channelId, data]) => {
           if (typeof data === 'number') {
             normalizedFollowers[channelId] = data;
-          } else if (data?.count !== undefined) {
-            normalizedFollowers[channelId] = Number(data.count) || 0;
-          } else if (Array.isArray(data?.users)) {
-            normalizedFollowers[channelId] = data.users.length;
+          } else if (Array.isArray(data)) {
+            normalizedFollowers[channelId] = data.length;
+          } else if (data && typeof data === 'object') {
+            normalizedFollowers[channelId] = Object.keys(data).length;
           } else {
             normalizedFollowers[channelId] = 0;
           }
         });
 
+        // ✅ Normalize likes → always number
         const likesData = {};
         videos.forEach(v => {
-          likesData[v.id] =
-            Number(v.likesCount) ||
-            (Array.isArray(v.likes) ? v.likes.length : 0) ||
-            0;
+          if (typeof v.likesCount === 'number') {
+            likesData[v.id] = v.likesCount;
+          } else if (Array.isArray(v.likes)) {
+            likesData[v.id] = v.likes.length;
+          } else if (v.likes && typeof v.likes === 'object') {
+            likesData[v.id] = Object.keys(v.likes).length;
+          } else {
+            likesData[v.id] = 0;
+          }
         });
 
         if (mounted) {
           setLikesMap(likesData);
           setFollowersMap(normalizedFollowers);
-
-          // Debug helpers
-          window.__VIDEOS = videos;
-          window.__FOLLOWERS = normalizedFollowers;
         }
       } catch (err) {
         console.error('Error loading likes/followers:', err);
@@ -111,20 +113,23 @@ export default function Videos() {
   // UI
   // =========================
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 px-3 sm:px-6 py-6">
       <div className="max-w-7xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+        
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
             Videos
           </h1>
           <button
             onClick={() => navigate('/upload')}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
             Upload
           </button>
         </div>
 
+        {/* Loading */}
         {loading ? (
           <p className="text-gray-600 dark:text-gray-300">
             Loading videos...
@@ -134,27 +139,29 @@ export default function Videos() {
             {videos.map(v => (
               <div
                 key={v.id}
-                className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden"
+                className="bg-white dark:bg-gray-800 rounded-xl shadow overflow-hidden flex flex-col"
               >
+                {/* Thumbnail */}
                 <img
                   src={v.thumbnailUrl || '/video-placeholder.png'}
                   alt={v.title}
-                  className="w-full h-48 object-cover"
+                  className="w-full h-44 sm:h-48 object-cover"
                 />
 
-                <div className="p-4">
-                  <h3 className="font-semibold text-lg text-gray-900 dark:text-white">
+                {/* Content */}
+                <div className="p-4 flex flex-col flex-grow">
+                  <h3 className="font-semibold text-base sm:text-lg text-gray-900 dark:text-white line-clamp-2">
                     {v.title}
                   </h3>
 
-                  <p className="text-gray-600 dark:text-gray-300 text-sm mt-2">
+                  <p className="text-gray-600 dark:text-gray-300 text-sm mt-2 line-clamp-3">
                     {v.description}
                   </p>
 
-                  <div className="mt-4 flex justify-between items-end">
+                  <div className="mt-auto pt-4 flex justify-between items-center">
                     <button
                       onClick={() => navigate(`/video/${v.id}`)}
-                      className="px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                      className="px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700"
                     >
                       Play
                     </button>
@@ -165,19 +172,13 @@ export default function Videos() {
                           v.createdAt?.toDate
                             ? v.createdAt.toDate()
                             : v.createdAt
-                        ).toLocaleString()}
+                        ).toLocaleDateString()}
                       </div>
 
-                      {v.uploaderId && (
-                        <div>
-                          By {v.uploaderName || v.uploaderId}
-                        </div>
-                      )}
-
-                      <div>Likes: {likesMap[v.id] || 0}</div>
+                      <div>By {v.uploaderName}</div>
+                      <div>👍 Likes: {likesMap[v.id] || 0}</div>
                       <div>
-                        Followers:{' '}
-                        {followersMap[v.uploaderId] ?? 0}
+                        👥 Followers: {followersMap[v.uploaderId] ?? 0}
                       </div>
                     </div>
                   </div>

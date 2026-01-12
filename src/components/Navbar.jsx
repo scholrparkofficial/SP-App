@@ -28,44 +28,46 @@ export default function Navbar() {
   const [isMessagesOpen, setIsMessagesOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [hasNewMessages, setHasNewMessages] = useState(false);
   const [hasNewNotifications, setHasNewNotifications] = useState(false);
 
   const navigate = useNavigate();
   const { user, googleLogin, logout } = useAuth();
 
+  /* ---------- Dark Mode ---------- */
   useEffect(() => {
     const saved = localStorage.getItem("darkMode") === "true";
     setDarkMode(saved);
     document.documentElement.classList.toggle("dark", saved);
   }, []);
 
-  useEffect(() => {
-    if (!user) return;
-
-    const checkUpdates = async () => {
-      try {
-        const messages = await getNewMessages(user.uid);
-        const notifications = await getNewNotifications(user.uid);
-        setHasNewMessages(messages.length > 0);
-        setHasNewNotifications(notifications.length > 0);
-      } catch (e) {
-        console.error(e);
-      }
-    };
-
-    checkUpdates();
-  }, [user]);
-
   const toggleDarkMode = () => {
     const next = !darkMode;
     setDarkMode(next);
     document.documentElement.classList.toggle("dark", next);
     localStorage.setItem("darkMode", String(next));
+  };
+
+  /* ---------- Notifications ---------- */
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const messages = await getNewMessages(user.uid);
+      const notifications = await getNewNotifications(user.uid);
+      setHasNewMessages(messages.length > 0);
+      setHasNewNotifications(notifications.length > 0);
+    })();
+  }, [user]);
+
+  const closeAllPanels = () => {
+    setIsMessagesOpen(false);
+    setIsNotificationsOpen(false);
+    setIsProfileOpen(false);
+    setIsMobileMenuOpen(false);
   };
 
   const handleGoogleLogin = async () => {
@@ -75,170 +77,104 @@ export default function Navbar() {
 
   const handleLogout = async () => {
     await logout();
-    setIsProfileOpen(false);
+    closeAllPanels();
   };
 
   return (
     <div className="overflow-x-hidden">
-      {/* NAVBAR */}
-      <div className="fixed top-0 left-0 w-full z-40 bg-green-50 dark:bg-gradient-to-r dark:from-gray-900 dark:to-gray-800 shadow-md backdrop-blur-sm">
-        <div className="container-main flex items-center justify-between h-14 md:h-16">
+      {/* ================= NAVBAR ================= */}
+      <header className="fixed top-0 left-0 w-full z-50 bg-green-50/90 dark:bg-slate-900/90 backdrop-blur border-b border-green-100 dark:border-slate-700">
+        <div className="max-w-7xl mx-auto px-4 h-14 md:h-16 flex items-center justify-between">
           {/* LEFT */}
           <div className="flex items-center gap-3">
-            <img
-              src="/width_1024.webp"
-              alt="Logo"
-              className="w-10 h-10 md:w-12 md:h-12 rounded-lg"
-            />
-            <span className="font-bold text-lg md:text-xl ml-5 m-14 bg-slate-300 px-2 py-1 rounded-lg">
+            <img src="/width_1024.webp" className="w-9 h-9 rounded-lg" />
+            <span className="font-semibold text-lg text-slate-800 dark:text-slate-100">
               ScholrPark
             </span>
           </div>
 
-          {/* CENTER */}
-          <div className="hidden md:flex items-center gap-8 flex-1 justify-center">
-            <Link to="/" className="nav-item"><Home size={20} /> Home</Link>
-            <Link to="/videos" className="nav-item">Videos</Link>
-            <Link to="/private-batches" className="nav-item"><BookOpen size={20} /> Private Batches</Link>
-            <Link to="/your-notes" className="nav-item"><FileText size={20} /> Notes</Link>
+          {/* CENTER (DESKTOP) */}
+          <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
+            <Link to="/" className="nav-link"><Home size={18}/> Home</Link>
+            <Link to="/videos" className="nav-link">Videos</Link>
+            <Link to="/private-batches" className="nav-link"><BookOpen size={18}/> Batches</Link>
+            <Link to="/your-notes" className="nav-link"><FileText size={18}/> Notes</Link>
 
-            <button onClick={() => setShowHelpModal(true)} className="nav-item">
-              <HelpCircle size={20} /> Help
+            <button onClick={() => setShowHelpModal(true)} className="nav-link">
+              <HelpCircle size={18}/> Help
             </button>
 
-            <button
-              onClick={() => {
-                setIsMessagesOpen(true);
-                setIsNotificationsOpen(false);
-                setIsProfileOpen(false);
-              }}
-              className="nav-item relative"
-            >
-              <MessageCircle size={20} /> Messages
-              {hasNewMessages && <span className="badge-dot absolute -top-1 -right-1" />}
+            <button onClick={() => { closeAllPanels(); setIsMessagesOpen(true); }} className="nav-link relative">
+              <MessageCircle size={18}/> Messages
+              {hasNewMessages && <span className="badge-dot" />}
             </button>
 
-            <button
-              onClick={() => {
-                setIsNotificationsOpen(true);
-                setIsMessagesOpen(false);
-                setIsProfileOpen(false);
-              }}
-              className="nav-item relative"
-            >
-              <Bell size={20} /> Notifications
-              {hasNewNotifications && <span className="badge-dot absolute -top-1 -right-1" />}
+            <button onClick={() => { closeAllPanels(); setIsNotificationsOpen(true); }} className="nav-link relative">
+              <Bell size={18}/> Alerts
+              {hasNewNotifications && <span className="badge-dot" />}
             </button>
-          </div>
+          </nav>
 
           {/* RIGHT */}
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => {
-                setIsProfileOpen(true);
-                setIsMessagesOpen(false);
-                setIsNotificationsOpen(false);
-                setIsMobileMenuOpen(false);
-              }}
-              className="flex items-center gap-2 rounded-md focus-visible:ring-2"
-            >
-              <img
-                src={user?.photoURL || "/avatar.png"}
-                className="w-9 h-9 rounded-full border"
-              />
-              <span className="hidden md:inline max-w-[120px] truncate text-sm">
-                {user?.displayName?.split(" ")[0]}
-              </span>
-              <ChevronDown size={16} className="hidden md:inline opacity-60" />
+            <button onClick={toggleDarkMode} className="hidden md:flex p-2 rounded-md hover:bg-green-100 dark:hover:bg-slate-700">
+              {darkMode ? <Moon size={18}/> : <Sun size={18}/>}
             </button>
 
-            <button
-              className="md:hidden p-2"
-              onClick={() => setIsMobileMenuOpen(true)}
-            >
-              <Menu size={20} />
+            <button onClick={() => { closeAllPanels(); setIsProfileOpen(true); }} className="flex items-center gap-2">
+              <img src={user?.photoURL || "/avatar.png"} className="w-8 h-8 rounded-full border" />
+              <ChevronDown size={16} className="hidden md:block opacity-60"/>
+            </button>
+
+            <button className="md:hidden p-2" onClick={() => { closeAllPanels(); setIsMobileMenuOpen(true); }}>
+              <Menu />
             </button>
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* MOBILE MENU */}
+      {/* ================= MOBILE SIDEBAR ================= */}
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 bg-black/40 z-40 md:hidden">
-          <div className="absolute right-0 top-0 w-72 h-full bg-white dark:bg-gray-800 p-4">
-            <button onClick={() => setIsMobileMenuOpen(false)} className="mb-4">
-              <X />
+        <>
+          <div className="fixed inset-0 bg-black/40 z-40" onClick={() => setIsMobileMenuOpen(false)} />
+          <aside className="fixed top-0 right-0 h-full w-72 bg-white dark:bg-slate-800 z-50 p-5 flex flex-col gap-3">
+
+            <div className="flex justify-between items-center mb-2">
+              <h2 className="font-semibold">Menu</h2>
+              <button onClick={() => setIsMobileMenuOpen(false)}><X /></button>
+            </div>
+
+            <button onClick={() => navigate("/")} className="sidebar-btn"><Home size={16}/> Home</button>
+            <button onClick={() => navigate("/videos")} className="sidebar-btn">Videos</button>
+            <button onClick={() => navigate("/private-batches")} className="sidebar-btn"><BookOpen size={16}/> Batches</button>
+            <button onClick={() => navigate("/your-notes")} className="sidebar-btn"><FileText size={16}/> Notes</button>
+
+            {/* ✅ MESSAGES */}
+            <button
+              onClick={() => { closeAllPanels(); setIsMessagesOpen(true); }}
+              className="sidebar-btn relative"
+            >
+              <MessageCircle size={16}/> Messages
+              {hasNewMessages && <span className="badge-dot" />}
             </button>
 
-            <nav className="space-y-2">
-              <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className="nav-item block">Home</Link>
-              <Link to="/videos" onClick={() => setIsMobileMenuOpen(false)} className="nav-item block">Videos</Link>
-              <Link to="/private-batches" onClick={() => setIsMobileMenuOpen(false)} className="nav-item block">Private Batches</Link>
-              <Link to="/your-notes" onClick={() => setIsMobileMenuOpen(false)} className="nav-item block">Notes</Link>
-            </nav>
-          </div>
-        </div>
-      )}
+            {/* ✅ ALERTS */}
+            <button
+              onClick={() => { closeAllPanels(); setIsNotificationsOpen(true); }}
+              className="sidebar-btn relative"
+            >
+              <Bell size={16}/> Alerts
+              {hasNewNotifications && <span className="badge-dot" />}
+            </button>
 
-      {/* PROFILE BACKDROP + PANEL */}
-      {isProfileOpen && (
-        <>
-          <div
-            className="fixed inset-0 bg-black/30 z-40"
-            onClick={() => setIsProfileOpen(false)}
-          />
-
-          <div className="fixed top-0 right-0 w-full md:w-72 h-full bg-white dark:bg-gray-800 z-50 shadow-lg">
-            <div className="flex justify-between items-center p-4 border-b">
-              <h2 className="font-semibold">Profile</h2>
-              <button onClick={() => setIsProfileOpen(false)}>
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="p-4 space-y-3">
-              {user ? (
-                <>
-                  <p className="font-semibold">{user.displayName}</p>
-
-                  <button onClick={() => navigate("/account")} className="panel-btn">
-                    <Settings size={16} /> Account Settings
-                  </button>
-
-                  <button onClick={() => navigate("/my-videos")} className="panel-btn">
-                    <FileText size={16} /> My Videos
-                  </button>
-
-                  {user.email === (import.meta.env.VITE_ADMIN_EMAIL || "scholrpark.official@gmail.com") && (
-                    <button onClick={() => navigate("/admin")} className="panel-btn">
-                      <ShieldCheck size={16} /> Admin Panel
-                    </button>
-                  )}
-
-                  <button onClick={handleLogout} className="panel-btn bg-red-500 text-white">
-                    <LogOut size={16} /> Logout
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button onClick={handleGoogleLogin} className="btn-primary">
-                    Continue with Google
-                  </button>
-                  <button onClick={() => setIsModalOpen(true)} className="btn-secondary">
-                    Sign In
-                  </button>
-                </>
-              )}
-
-              <button onClick={toggleDarkMode} className="panel-btn">
-                {darkMode ? <Moon size={16} /> : <Sun size={16} />} Dark Mode
-              </button>
-            </div>
-          </div>
+            <button onClick={toggleDarkMode} className="sidebar-btn mt-3">
+              {darkMode ? <Moon size={16}/> : <Sun size={16}/>} Dark Mode
+            </button>
+          </aside>
         </>
       )}
 
-      {/* PANELS */}
+      {/* ================= PANELS & MODALS ================= */}
       <Messages isOpen={isMessagesOpen} onClose={() => setIsMessagesOpen(false)} />
       <NotificationsPanel isOpen={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} />
       <LoginModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onGoogleLogin={handleGoogleLogin} />

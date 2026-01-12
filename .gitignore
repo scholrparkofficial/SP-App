@@ -1,12 +1,31 @@
-node_modules
-nextjs-edtech
-AGENTS.md
-.kiro
-.vscode.DS_Store
+# ===============================
+# Dependencies
+# ===============================
+node_modules/
 
-# Local env files (cloudinary / firebase)
-.env*
+# ===============================
+# Environment variables
+# ===============================
 .env
-
-# server local env
+.env.*
 server/.env
+
+# ===============================
+# Build / Framework
+# ===============================
+.next/
+dist/
+build/
+
+# ===============================
+# OS / Editor junk
+# ===============================
+.DS_Store
+.vscode/
+.idea/
+
+# ===============================
+# Misc
+# ===============================
+AGENTS.md
+.kiro/

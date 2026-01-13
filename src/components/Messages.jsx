@@ -494,9 +494,9 @@ export default function Messages({ isOpen, onClose }) {
                   onClick={() => startConversation(result)}
                 >
                   <img
-                        src={result.photoURL || "/avatar.png"}
+                        src={result.photoURL || "/avatar.svg"}
                         alt={result.displayName}
-                        onError={(e) => { e.target.onerror = null; e.target.src = '/avatar.png'; }}
+                        onError={(e) => { e.target.onerror = null; e.target.src = '/avatar.svg'; }}
                         className="w-8 h-8 rounded-full object-cover"
                   />
                   <div className="flex-1 min-w-0">
@@ -605,9 +605,9 @@ export default function Messages({ isOpen, onClose }) {
                   onClick={() => openPrivateChat({ id: conv.id, otherUser: otherUser || { uid: otherUserId } })}
                 >
                   <img
-                    src={otherUser?.photoURL || "/avatar.png"}
+                    src={otherUser?.photoURL || "/avatar.svg"}
                     alt={otherUser?.displayName || "User"}
-                    onError={(e) => { e.target.onerror = null; e.target.src = '/avatar.png'; }}
+                    onError={(e) => { e.target.onerror = null; e.target.src = '/avatar.svg'; }}
                     className="w-8 h-8 rounded-full object-cover"
                   />
                   <div className="flex-1 min-w-0">
@@ -661,9 +661,9 @@ export default function Messages({ isOpen, onClose }) {
                       onClick={() => startConversation(result)}
                     >
                       <img
-                        src={result.photoURL || "/avatar.png"}
+                        src={result.photoURL || "/avatar.svg"}
                         alt={result.displayName}
-                        onError={(e) => { e.target.onerror = null; e.target.src = '/avatar.png'; }}
+                        onError={(e) => { e.target.onerror = null; e.target.src = '/avatar.svg'; }}
                         className="w-10 h-10 rounded-full object-cover"
                       />
                       <div className="flex-1 min-w-0">
@@ -763,7 +763,7 @@ export default function Messages({ isOpen, onClose }) {
                       onClick={() => openPrivateChat(conv)}
                     >
                       <img
-                        src={otherUser?.photoURL || "/avatar.png"}
+                        src={otherUser?.photoURL || "/avatar.svg"}
                         alt={otherUser?.displayName || "User"}
                         className="w-10 h-10 rounded-full"
                       />

@@ -14,7 +14,7 @@ export default function AccountSettings({ navbarProfileUpdater }) {
   const [profileData, setProfileData] = useState({
     username: "",
     email: "",
-    avatar: "/avatar.png",
+    avatar: "/avatar.svg",
   });
 
   const [passwordData, setPasswordData] = useState({
@@ -31,7 +31,7 @@ export default function AccountSettings({ navbarProfileUpdater }) {
       setProfileData({
         username: user.displayName || user.email?.split("@")[0] || "User",
         email: user.email || "",
-        avatar: user.photoURL || "/avatar.png",
+        avatar: user.photoURL || "/avatar.svg",
       });
     }
   }, [user]);

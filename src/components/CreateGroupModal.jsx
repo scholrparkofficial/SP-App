@@ -168,7 +168,7 @@ export default function CreateGroupModal({ isOpen, onClose, currentUser, onCreat
                 >
                   <div className="flex items-center gap-2">
                     <img
-                      src={user.photoURL || "/avatar.png"}
+                      src={user.photoURL || "/avatar.svg"}
                       alt={user.displayName}
                       className="w-8 h-8 rounded-full"
                     />

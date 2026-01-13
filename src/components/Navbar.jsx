@@ -123,7 +123,7 @@ export default function Navbar() {
             </button>
 
             <button onClick={() => { closeAllPanels(); setIsProfileOpen(true); }} className="flex items-center gap-2">
-              <img src={user?.photoURL || "/avatar.png"} className="w-8 h-8 rounded-full border" />
+              <img src={user?.photoURL || "/avatar.svg"} className="w-8 h-8 rounded-full border" />
               <ChevronDown size={16} className="hidden md:block opacity-60"/>
             </button>
 

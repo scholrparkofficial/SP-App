@@ -1,32 +1,51 @@
+import { setGlobalOptions } from "firebase-functions";
+import { onRequest } from "firebase-functions/https";
+import { logger } from "firebase-functions";
+import { v2 as cloudinary } from "cloudinary";
+
 /**
- * Import function triggers from their respective submodules:
- *
- * const {onCall} = require("firebase-functions/v2/https");
- * const {onDocumentWritten} = require("firebase-functions/v2/firestore");
- *
- * See a full list of supported triggers at https://firebase.google.com/docs/functions
+ * Limit max instances (cost control)
  */
-
-const {setGlobalOptions} = require("firebase-functions");
-const {onRequest} = require("firebase-functions/https");
-const logger = require("firebase-functions/logger");
-
-// For cost control, you can set the maximum number of containers that can be
-// running at the same time. This helps mitigate the impact of unexpected
-// traffic spikes by instead downgrading performance. This limit is a
-// per-function limit. You can override the limit for each function using the
-// `maxInstances` option in the function's options, e.g.
-// `onRequest({ maxInstances: 5 }, (req, res) => { ... })`.
-// NOTE: setGlobalOptions does not apply to functions using the v1 API. V1
-// functions should each use functions.runWith({ maxInstances: 10 }) instead.
-// In the v1 API, each function can only serve one request per container, so
-// this will be the maximum concurrent request count.
 setGlobalOptions({ maxInstances: 10 });
 
-// Create and deploy your first functions
-// https://firebase.google.com/docs/functions/get-started
+/**
+ * Configure Cloudinary
+ */
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
-// exports.helloWorld = onRequest((request, response) => {
-//   logger.info("Hello logs!", {structuredData: true});
-//   response.send("Hello from Firebase!");
-// });
+/**
+ * DELETE VIDEO FUNCTION
+ */
+export const deleteVideo = onRequest(async (req, res) => {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "method-not-allowed" });
+  }
+
+  try {
+    const { publicId } = req.body;
+
+    if (!publicId) {
+      return res.status(400).json({ error: "publicId is required" });
+    }
+
+    const result = await cloudinary.uploader.destroy(publicId, {
+      resource_type: "video",
+    });
+
+    logger.info("Cloudinary delete result", result);
+
+    return res.status(200).json({
+      success: true,
+      result,
+    });
+  } catch (err) {
+    logger.error("Cloudinary delete failed", err);
+    return res.status(500).json({
+      error: err.message,
+    });
+  }
+});

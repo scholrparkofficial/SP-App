@@ -1,4 +1,10 @@
-const cloudinary = require('cloudinary').v2;
+export const config = {
+  runtime: "nodejs",
+};
+
+const cloudinary = require("cloudinary").v2;
+
+
 
 // Configure Cloudinary from environment variables (set these in Vercel or server/.env locally)
 cloudinary.config({

@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { onSnapshot } from 'firebase/firestore';
-import { getComments, addComment } from '../firebase';
+import { getComments, addComment, deleteComment, getUserDetails } from '../firebase';
 
 export default function Comments({ videoId }) {
   const { user } = useAuth();
   const [comments, setComments] = useState([]);
   const [input, setInput] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [profile, setProfile] = useState(null);
 
   useEffect(() => {
     if (!videoId) return;
@@ -22,6 +23,21 @@ export default function Comments({ videoId }) {
 
     return () => unsub();
   }, [videoId]);
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchProfile = async () => {
+      if (!user) { setProfile(null); return; }
+      try {
+        const p = await getUserDetails(user.uid);
+        if (mounted) setProfile(p);
+      } catch (e) {
+        console.error('Failed to fetch user profile', e);
+      }
+    };
+    fetchProfile();
+    return () => { mounted = false; };
+  }, [user]);
 
   const submit = async () => {
     if (!input.trim()) return;
@@ -43,6 +59,19 @@ export default function Comments({ videoId }) {
     }
   };
 
+  const handleDelete = async (commentId) => {
+    if (!videoId || !commentId) return;
+    if (!user) { alert('Please sign in'); return; }
+    const ok = window.confirm('Delete this comment?');
+    if (!ok) return;
+    try {
+      await deleteComment(videoId, commentId);
+    } catch (err) {
+      console.error('Failed to delete comment', err);
+      alert('Failed to delete comment');
+    }
+  };
+
   return (
     <div>
       <div className="flex items-start gap-3">
@@ -61,7 +90,12 @@ export default function Comments({ videoId }) {
           <div key={c.id} className="flex gap-3">
             <img src={c.photoURL || '/avatar.svg'} alt={c.displayName} className="w-10 h-10 rounded-full object-cover" />
             <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm flex-1">
-              <div className="text-sm font-semibold">{c.displayName}</div>
+              <div className="flex justify-between items-start">
+                <div className="text-sm font-semibold">{c.displayName}</div>
+                {(user && (user.uid === c.userId || profile?.isAdmin)) && (
+                  <button onClick={() => handleDelete(c.id)} className="text-sm text-red-600 hover:underline">Delete</button>
+                )}
+              </div>
               <div className="text-sm text-gray-700 dark:text-gray-200">{c.text}</div>
             </div>
           </div>

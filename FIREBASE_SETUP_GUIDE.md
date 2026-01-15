@@ -26,7 +26,24 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow write: if request.auth != null && request.auth.uid == userId;
     }
-    
+
+    // Videos collection (comments subcollection)
+    match /videos/{videoId} {
+      allow read: if true;
+      // Comments subcollection
+      match /comments/{commentId} {
+        allow read: if true;
+        allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+        allow update: if request.auth != null && request.auth.uid == resource.data.userId;
+        // Allow delete for the comment owner or an admin user
+        allow delete: if request.auth != null && (
+          request.auth.uid == resource.data.userId ||
+          // read admin flag from users collection for the requesting user
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true
+        );
+      }
+    }
+
     // Conversations collection
     match /conversations/{conversationId} {
       allow read, write: if request.auth != null && 
@@ -34,7 +51,7 @@ service cloud.firestore {
       allow create: if request.auth != null && 
         request.auth.uid in request.resource.data.participants;
     }
-    
+
     // Messages subcollection
     match /conversations/{conversationId}/messages/{messageId} {
       allow read: if request.auth != null && 
@@ -42,7 +59,7 @@ service cloud.firestore {
       allow create: if request.auth != null && 
         request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants;
     }
-    
+
     // Groups collection
     match /groups/{groupId} {
       allow read: if request.auth != null && 
@@ -52,7 +69,7 @@ service cloud.firestore {
       allow update: if request.auth != null && 
         request.auth.uid in resource.data.participants;
     }
-    
+
     // Group messages subcollection
     match /groups/{groupId}/messages/{messageId} {
       allow read, write: if request.auth != null && 
@@ -168,14 +185,28 @@ service cloud.firestore {
       allow read: if true;
       allow write: if request.auth != null && request.auth.uid == userId;
     }
-    
+
+    // Videos collection (comments subcollection)
+    match /videos/{videoId} {
+      allow read: if true;
+      match /comments/{commentId} {
+        allow read: if true;
+        allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+        allow update: if request.auth != null && request.auth.uid == resource.data.userId;
+        allow delete: if request.auth != null && (
+          request.auth.uid == resource.data.userId ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true
+        );
+      }
+    }
+
     // Only participants can read/write conversations
     match /conversations/{conversationId} {
       allow read: if request.auth != null && 
         request.auth.uid in resource.data.participants;
       allow write: if request.auth != null && 
         request.auth.uid in resource.data.participants;
-      
+
       // Messages subcollection
       match /messages/{messageId} {
         allow read, write: if request.auth != null && 

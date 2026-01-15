@@ -689,6 +689,13 @@ export const getComments = (videoId) => {
   return q;
 };
 
+export const deleteComment = async (videoId, commentId) => {
+  const { doc, deleteDoc } = await import("firebase/firestore");
+  if (!videoId || !commentId) throw new Error("videoId and commentId required");
+  const commentRef = doc(db, "videos", videoId, "comments", commentId);
+  await deleteDoc(commentRef);
+};
+
 export const likeVideo = async (videoId, userId) => {
   const { doc, updateDoc, arrayUnion, increment } = await import(
     "firebase/firestore"

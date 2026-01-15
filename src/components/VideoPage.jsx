@@ -153,6 +153,16 @@ export default function VideoPage() {
   // If uploader is viewing their own pending video, show a notice about approval
   const showUploaderPendingNotice = isUploader && video.status && video.status !== 'public';
 
+  // Resolve video URL: prefer stored `videoUrl`, fall back to building a Cloudinary URL
+  const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+  const buildCloudinaryVideoUrl = (publicId) =>
+    cloudName && publicId
+      ? `https://res.cloudinary.com/${cloudName}/video/upload/${publicId}`
+      : null;
+
+  const resolvedVideoUrl =
+    video?.videoUrl || (video?.videoPublicId ? buildCloudinaryVideoUrl(video.videoPublicId) : null);
+
   return (
     <div className="bg-gray-50 dark:bg-gray-900 min-h-screen">
       <div className="max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -162,11 +172,15 @@ export default function VideoPage() {
 
           {/* Video Player */}
           <div className="bg-black rounded-xl overflow-hidden">
-            <video
-              className="w-full max-h-[70vh] object-contain"
-              controls
-              src={video.videoUrl}
-            />
+            {resolvedVideoUrl ? (
+              <video
+                className="w-full max-h-[70vh] object-contain"
+                controls
+                src={resolvedVideoUrl}
+              />
+            ) : (
+              <div className="p-6 text-center text-red-500">Video URL missing or resource unavailable.</div>
+            )}
           </div>
 
           {/* Title */}

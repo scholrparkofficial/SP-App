@@ -96,7 +96,7 @@ export default function Navbar() {
 
           {/* CENTER (DESKTOP) */}
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
-            <Link to="/" className="nav-link"><Home size={18}/> Home</Link>
+            <Link to="/dashboard" className="nav-link"><Home size={18}/> Home</Link>
             <Link to="/videos" className="nav-link">Videos</Link>
             <Link to="/private-batches" className="nav-link"><BookOpen size={18}/> Batches</Link>
             <Link to="/your-notes" className="nav-link"><FileText size={18}/> Notes</Link>

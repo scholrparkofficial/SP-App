@@ -60,11 +60,14 @@ function AppWrapper() {
 
   return (
     <>
+    <Routes>
+    <Route path="/" element={<LandingPage />} />
+    </Routes>
       <Navbar />
       {/* spacer to prevent content being covered by fixed navbar */}
       <div className="h-14 md:h-16" />
       <Routes>
-        <Route path="/" element={<LandingPage />} />
+        
         <Route path="/dashboard" element={<Home />} />
         <Route path="/private-batches" element={<PrivateBatches />} />
         <Route path="/your-notes" element={<YourNotesLibrary />} />

@@ -18,6 +18,7 @@ import YourNotesLibrary from "./components/YourNotesLibrary";
 import AccountSettings from "./components/AccountSettings";
 import ManageVideos from "./components/ManageVideos";
 import AdminPanel from "./components/AdminPanel";
+import LandingPage from "./components/LandingPage";
 
 
 function AppWrapper() {
@@ -63,7 +64,8 @@ function AppWrapper() {
       {/* spacer to prevent content being covered by fixed navbar */}
       <div className="h-14 md:h-16" />
       <Routes>
-        <Route path="/" element={<Home />} />
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/dashboard" element={<Home />} />
         <Route path="/private-batches" element={<PrivateBatches />} />
         <Route path="/your-notes" element={<YourNotesLibrary />} />
         <Route path="/your-notes/editor/:noteId" element={<YourNoteEditor />} />
